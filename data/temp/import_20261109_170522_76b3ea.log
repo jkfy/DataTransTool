@@ -1,0 +1,4 @@
+﻿2026-11-09 17:05:22 [INFO] job_id=76b3eab3 inputs=1 output_dir=E:\Documents\C++\qt_project\DataTransTool\data\temp export_tc=False export_eplan=True on_invalid=abort 任务开始
+2026-11-09 17:05:22 [INFO] file=E:\Documents\C++\qt_project\DataTransTool\data\inputExample-total.xlsx sheet=Sheet1 rows=6 header_row=3 读取完成
+2026-11-09 17:05:22 [INFO] path=E:\Documents\C++\qt_project\DataTransTool\data\temp\EPlan_20261109_170522_76b3ea.xlsx rows=5 Eplan 表写出完成
+2026-11-09 17:05:22 [INFO] status=success result=完成：1 个文件，TC 0 行，Eplan 5 行 duration_ms=35 任务结束

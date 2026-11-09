@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Build artifacts
+build/
+dist/
+*.spec
+*.spec.bak
+
+# Qt/CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.user
+
+# Temporary output
+output/
+~$*
+*.xlsx
+
+# ACL repair report (if created inside workspace)
+.dsh-acl-report/

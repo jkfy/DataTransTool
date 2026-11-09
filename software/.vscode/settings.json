@@ -1,0 +1,15 @@
+{
+  // 使用 CMakePresets.json 里的 mingw-release / mingw-debug 预设
+  "cmake.useCMakePresets": "always",
+  "cmake.cmakePath": "D:/QtCreate/Tools/CMake_64/bin/cmake.exe",
+  "cmake.configureOnOpen": true,
+  "cmake.buildBeforeRun": true,
+  // 万一关掉 presets（"useCMakePresets": "never"），这两个仍能兜底
+  "cmake.generator": "Ninja",
+  "cmake.configureSettings": {
+    "CMAKE_PREFIX_PATH": "D:/QtCreate/6.10.0/mingw_64",
+    "CMAKE_CXX_COMPILER": "D:/QtCreate/Tools/mingw1310_64/bin/g++.exe"
+  },
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "files.encoding": "utf8"
+}

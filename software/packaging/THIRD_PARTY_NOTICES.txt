@@ -1,0 +1,36 @@
+DataTransTool 0.1.0 — 第三方组件说明
+
+本程序分发时包含以下第三方组件：
+
+1. Python 3.12
+   Copyright (c) Python Software Foundation.
+   License: Python Software Foundation License 2.0
+   https://docs.python.org/3/license.html
+
+2. openpyxl 3.1
+   Copyright (c) openpyxl contributors.
+   License: MIT
+   https://foss.heptapod.net/openpyxl/openpyxl
+
+3. et_xmlfile
+   License: MIT
+   https://foss.heptapod.net/openpyxl/et_xmlfile
+
+4. Qt 6 (QtCore / QtGui / QtWidgets 及插件)
+   Copyright (c) The Qt Company Ltd. and contributors.
+   License: LGPLv3 / GPLv3 / commercial
+   https://www.qt.io/licensing/
+   本程序以动态链接方式使用 Qt；Qt DLL 位于程序目录，可按 LGPL 要求替换。
+
+5. PyInstaller
+   Copyright (c) PyInstaller Development Team.
+   License: GPLv2 with a special exception for bootloader / bundled applications
+   https://pyinstaller.org/en/stable/license.html
+
+6. MinGW-w64 runtime (libgcc_s_seh-1.dll, libstdc++-6.dll, libwinpthread-1.dll)
+   Copyright (c) MinGW-w64 project / GCC contributors.
+   License: GCC Runtime Library Exception
+   https://gcc.gnu.org/onlinedocs/libstdc++/manual/license.html
+
+本目录中的程序代码版权归项目作者所有。若需闭源对外分发，请按上述许可证
+（尤其是 LGPLv3）保留版权声明、许可证文本和可替换库说明；具体合规事项请咨询法务。
