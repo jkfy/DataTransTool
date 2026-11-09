@@ -22,6 +22,7 @@ Makefile
 output/
 ~$*
 *.xlsx
+*.zip
 
 # ACL repair report (if created inside workspace)
 .dsh-acl-report/
