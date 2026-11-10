@@ -423,6 +423,12 @@ QStatusBar {
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>30</height>
+          </size>
+         </property>
          <property name="placeholderText">
           <string>选择输出文件夹</string>
          </property>
@@ -435,6 +441,12 @@ QStatusBar {
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>30</height>
+          </size>
          </property>
          <property name="text">
           <string>浏览…</string>
@@ -513,6 +525,12 @@ QStatusBar {
        </item>
        <item row="2" column="1" colspan="2">
         <widget class="QComboBox" name="engineCombo">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>30</height>
+          </size>
+         </property>
          <property name="toolTip">
           <string>自动：先用 openpyxl，失败后调用本机 Excel（适合内网加密文件）。Excel 兼容：始终调用本机 Excel。标准：只用 openpyxl。</string>
          </property>
