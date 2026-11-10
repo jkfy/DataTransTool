@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}")
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
@@ -15,6 +16,7 @@ add_executable(DataTransTool WIN32
     MainWindow.cpp
     MainWindow.h
     MainWindow.ui
+    app.qrc
     BackendClient.cpp
     BackendClient.h
 )
@@ -56,6 +58,7 @@ if (DATATRANS_BUILD_UI_TEST)
         MainWindow.cpp
         MainWindow.h
         MainWindow.ui
+        app.qrc
         BackendClient.cpp
         BackendClient.h
     )

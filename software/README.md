@@ -2,9 +2,8 @@
 
 本目录是 DataTransTool 的交付目录，**代码文件直接放在这里**，不再套一层 `src/`。
 
-> 说明：本轮已把 Qt 控件改为 `ui/MainWindow.ui`（Qt Designer 可直接打开），
-> 但按你的要求**暂未重新打包**；现有 `DataTransTool-0.1.0-win64.zip` 是上一版功能等价的运行包。
-> 需要更新运行包时，在本目录执行 `packaging\build.ps1` 即可。
+> 说明：Qt 控件已改为 `ui/MainWindow.ui`（Qt Designer 可直接打开），并已加入
+> `icons/transIcon.png` 作为窗口/主页面图标；本轮已重新生成离线运行包。
 
 ## 目录内容
 
@@ -14,6 +13,7 @@
 | `DataTransTool-0.1.0-source.zip` | 源码压缩包，便于归档 |
 | `backend/` | Python 后端（读取、校验、映射、写 Excel、CLI 协议） |
 | `ui/` | Qt/C++ 前端；`MainWindow.ui` 是可视化界面文件，`MainWindow.cpp` 是逻辑 |
+| `icons/` | 应用图标 `transIcon.png`，通过 `ui/app.qrc` 编进 exe |
 | `templates/` | 固定输出模板 |
 | `packaging/` | `build.ps1` 一键构建/打包脚本、离线说明、第三方许可 |
 | `data/` | 需求方给的输入/输出样例 |

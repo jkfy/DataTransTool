@@ -19,55 +19,128 @@
   <property name="windowTitle">
    <string>TC 一键式导入工具</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="app.qrc">
+    <normaloff>:/icons/transIcon.png</normaloff>
+    <normalon>:/icons/transIcon.png</normalon>
+    <disabledoff>:/icons/transIcon.png</disabledoff>
+    <disabledon>:/icons/transIcon.png</disabledon>
+    <activeoff>:/icons/transIcon.png</activeoff>
+    <activeon>:/icons/transIcon.png</activeon>
+    <selectedoff>:/icons/transIcon.png</selectedoff>
+    <selectedon>:/icons/transIcon.png</selectedon>
+   </iconset>
+  </property>
   <property name="styleSheet">
-   <string notr="true">QMainWindow { background: #f4f6fa; }
+   <string notr="true">QMainWindow {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #ffffff,
+        stop:0.42 #f7fbff,
+        stop:1 #d3e7fc);
+}
+QWidget#centralwidget { background: transparent; }
 QGroupBox {
     font-weight: 600;
-    border: 1px solid #d8dee8;
-    border-radius: 8px;
-    margin-top: 10px;
-    padding: 14px 12px 12px 12px;
+    border: 1px solid #c9def5;
+    border-radius: 10px;
+    margin-top: 12px;
+    padding: 16px 14px 14px 14px;
     background: #ffffff;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
-    left: 12px;
-    padding: 0 6px;
-    color: #1f2d3d;
+    left: 14px;
+    padding: 2px 10px;
+    color: #1c4f86;
+    background-color: #e8f4ff;
+    border-radius: 6px;
 }
 QLineEdit, QListWidget, QPlainTextEdit {
-    border: 1px solid #cfd7e3;
-    border-radius: 6px;
-    padding: 6px;
+    border: 1px solid #c7dcf2;
+    border-radius: 7px;
+    padding: 7px;
     background: #ffffff;
-    selection-background-color: #bfdbfe;
+    color: #22384f;
+    selection-background-color: #cfe6ff;
+    selection-color: #17375e;
+}
+QLineEdit:focus, QListWidget:focus, QPlainTextEdit:focus {
+    border: 1px solid #6aa9e8;
 }
 QPushButton {
-    border: 1px solid #cfd7e3;
-    border-radius: 6px;
-    padding: 7px 14px;
-    background: #ffffff;
+    border: 1px solid #bcd8f3;
+    border-radius: 7px;
+    padding: 7px 13px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #ffffff,
+        stop:1 #eaf5ff);
+    color: #1d4f7a;
 }
-QPushButton:hover { background: #eef4ff; }
-QPushButton:disabled { color: #9aa4b2; background: #f3f5f8; }
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #f8fcff,
+        stop:1 #69b4fa);
+    border-color: #8fc5f0;
+}
+QPushButton:pressed {
+    background: #cfe6fa;
+    border-color: #6aa9e8;
+}
+QPushButton:disabled {
+    color: #9db2c6;
+    background: #f3f7fb;
+    border-color: #dce8f3;
+}
 QPushButton#startButton {
-    background: #2563eb;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #4c9af5,
+        stop:1 #578bfa);
     color: #ffffff;
     border-color: #2563eb;
     font-weight: 600;
 }
-QPushButton#startButton:hover { background: #1d4ed8; }
-QPushButton#startButton:disabled { background: #9db7ee; border-color: #9db7ee; }
+QPushButton#startButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #66adff,
+        stop:1 #3478ed);
+}
+QPushButton#startButton:pressed { background: #1d4ed8; }
+QPushButton#startButton:disabled {
+    background: #b7d4f5;
+    border-color: #b7d4f5;
+    color: #f0f7ff;
+}
 QProgressBar {
-    border: 1px solid #d8dee8;
-    border-radius: 6px;
+    border: 1px solid #c7dcf2;
+    border-radius: 8px;
     height: 20px;
     text-align: center;
-    background: #ffffff;
+    background: #edf6ff;
+    color: #1d4f7a;
 }
-QProgressBar::chunk { background: #2563eb; border-radius: 5px; }
+QProgressBar::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #8bc3fc,
+        stop:1 #2563eb);
+    border-radius: 7px;
+}
+QCheckBox { color: #274a69; spacing: 6px; }
+QListWidget::item {
+    padding: 4px 6px;
+    border-radius: 4px;
+}
+QListWidget::item:selected {
+    background: #d8ecff;
+    color: #17375e;
+}
+QListWidget::item:hover { background: #eef7ff; }
+QLabel#titleLabel { color: #17375e; }
 QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
-    color: #6b7785;
+    color: #5f7f9f;
+}
+QStatusBar {
+    background: #f2f9ff;
+    color: #4a6b88;
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -88,25 +161,73 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
      <number>16</number>
     </property>
     <item>
-     <widget class="QLabel" name="titleLabel">
-      <property name="font">
-       <font>
-        <pointsize>18</pointsize>
-        <weight>75</weight>
-        <bold>true</bold>
-       </font>
+     <layout class="QHBoxLayout" name="headerLayout">
+      <property name="spacing">
+       <number>12</number>
       </property>
-      <property name="text">
-       <string>TC 一键式导入工具</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QLabel" name="subtitleLabel">
-      <property name="text">
-       <string>导入物料总表（.xlsx），按固定模板生成 TC 表与 Eplan 表。</string>
-      </property>
-     </widget>
+      <item>
+       <widget class="QLabel" name="logoLabel">
+        <property name="minimumSize">
+         <size>
+          <width>56</width>
+          <height>56</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>56</width>
+          <height>56</height>
+         </size>
+        </property>
+        <property name="pixmap">
+         <pixmap resource="app.qrc">:/icons/transIcon.png</pixmap>
+        </property>
+        <property name="scaledContents">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="headerTextLayout">
+        <property name="spacing">
+         <number>2</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="titleLabel">
+          <property name="font">
+           <font>
+            <pointsize>18</pointsize>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>TC 一键式导入工具</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="subtitleLabel">
+          <property name="text">
+           <string>导入物料总表（.xlsx），按固定模板生成 TC 表与 Eplan 表。</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <spacer name="headerSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
     </item>
     <item>
      <widget class="QGroupBox" name="inputGroup">
@@ -139,20 +260,20 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
         <layout class="QVBoxLayout" name="inputLeft">
          <item>
           <widget class="QListWidget" name="fileList">
-           <property name="toolTip">
-            <string>支持一次添加多个 .xlsx 文件，也可以把文件拖到窗口里。</string>
-           </property>
            <property name="minimumSize">
             <size>
              <width>0</width>
              <height>150</height>
             </size>
            </property>
-           <property name="selectionMode">
-            <enum>QAbstractItemView::ExtendedSelection</enum>
+           <property name="toolTip">
+            <string>支持一次添加多个 .xlsx 文件，也可以把文件拖到窗口里。</string>
            </property>
            <property name="alternatingRowColors">
             <bool>true</bool>
+           </property>
+           <property name="selectionMode">
+            <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
            </property>
           </widget>
          </item>
@@ -181,6 +302,17 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
            <property name="text">
             <string>添加文件…</string>
            </property>
+           <property name="iconSize">
+            <size>
+             <width>18</width>
+             <height>18</height>
+            </size>
+           </property>
+           <property name="icon">
+            <iconset resource="app.qrc">
+             <normaloff>:/icons/addFile.png</normaloff>
+            </iconset>
+           </property>
           </widget>
          </item>
          <item>
@@ -193,6 +325,17 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
            </property>
            <property name="text">
             <string>移除选中</string>
+           </property>
+           <property name="iconSize">
+            <size>
+             <width>18</width>
+             <height>18</height>
+            </size>
+           </property>
+           <property name="icon">
+            <iconset resource="app.qrc">
+             <normaloff>:/icons/removeFile.png</normaloff>
+            </iconset>
            </property>
           </widget>
          </item>
@@ -207,12 +350,23 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
            <property name="text">
             <string>清空列表</string>
            </property>
+           <property name="iconSize">
+            <size>
+             <width>18</width>
+             <height>18</height>
+            </size>
+           </property>
+           <property name="icon">
+            <iconset resource="app.qrc">
+             <normaloff>:/icons/cleanList.png</normaloff>
+            </iconset>
+           </property>
           </widget>
          </item>
          <item>
           <spacer name="inputButtonSpacer">
            <property name="orientation">
-            <enum>Qt::Vertical</enum>
+            <enum>Qt::Orientation::Vertical</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -233,12 +387,6 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
        <string>2. 输出设置</string>
       </property>
       <layout class="QGridLayout" name="outputLayout">
-       <property name="horizontalSpacing">
-        <number>10</number>
-       </property>
-       <property name="verticalSpacing">
-        <number>10</number>
-       </property>
        <property name="leftMargin">
         <number>12</number>
        </property>
@@ -250,6 +398,9 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
        </property>
        <property name="bottomMargin">
         <number>12</number>
+       </property>
+       <property name="spacing">
+        <number>10</number>
        </property>
        <item row="0" column="0">
         <widget class="QLabel" name="outputLabel">
@@ -276,6 +427,17 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
          <property name="text">
           <string>浏览…</string>
          </property>
+         <property name="iconSize">
+          <size>
+           <width>18</width>
+           <height>18</height>
+          </size>
+         </property>
+         <property name="icon">
+          <iconset resource="app.qrc">
+           <normaloff>:/icons/openFile.png</normaloff>
+          </iconset>
+         </property>
         </widget>
        </item>
        <item row="1" column="1" colspan="2">
@@ -293,10 +455,10 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
          <item>
           <spacer name="exportSpacer">
            <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+            <enum>Qt::Orientation::Horizontal</enum>
            </property>
            <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
+            <enum>QSizePolicy::Policy::Fixed</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -319,7 +481,7 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
          <item>
           <spacer name="exportStretch">
            <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+            <enum>Qt::Orientation::Horizontal</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -379,10 +541,10 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
       <item>
        <spacer name="actionSpacer">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeType">
-         <enum>QSizePolicy::Fixed</enum>
+         <enum>QSizePolicy::Policy::Fixed</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
@@ -402,7 +564,7 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
       <item>
        <spacer name="actionStretch">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
@@ -500,6 +662,8 @@ QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
- <resources/>
+ <resources>
+  <include location="app.qrc"/>
+ </resources>
  <connections/>
 </ui>

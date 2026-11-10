@@ -45,9 +45,12 @@ DataTransTool/
     CMakeLists.txt
     main.cpp
     MainWindow.ui          # 控件/布局（Qt Designer 可直接打开）
+    app.qrc                # 资源清单，把图标编进 exe
     MainWindow.{h,cpp}     # 槽函数与业务逻辑
     BackendClient.{h,cpp}  # QProcess + JSONL
     tests/                 # QProcess / UI 冒烟测试
+  icons/                   # 应用图标
+    transIcon.png
   templates/               # 固定输出模板
     output_TC.xlsx
     output_Eplan.xlsx
@@ -63,6 +66,8 @@ DataTransTool/
 
 > 界面控件和布局都在 `ui/MainWindow.ui`，可直接用 Qt Designer 或 Qt Creator 打开修改；
 > `MainWindow.cpp` 只保留槽函数、校验和流程控制。CMake 已开启 `AUTOUIC`，改完 `.ui` 重新编译即可。
+>
+> 应用图标在 `icons/transIcon.png`，通过 `ui/app.qrc` 编进 exe；替换图标后重新编译即可生效。
 
 ## 输入格式
 
@@ -179,6 +184,10 @@ $env:DATATRANS_CORE = "$PWD\dist\DataTransTool\backend\datatrans-core.exe"
 ```powershell
 powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 ```
+
+> 打包脚本会先尝试关闭从 `dist\DataTransTool` 启动的 `DataTransTool.exe` / `datatrans-core.exe`，
+> 压缩阶段也会自动重试 5 次。若仍提示 `base_library.zip` 被占用，通常是应用没有完全退出，
+> 或杀毒软件正在扫描该文件；关闭应用、稍等几秒再执行即可。
 
 常用参数：
 

@@ -17,6 +17,7 @@ CMakeFiles/
 cmake_install.cmake
 Makefile
 *.user
+*.vscode/
 
 # Temporary output
 output/

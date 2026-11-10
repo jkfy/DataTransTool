@@ -42,6 +42,41 @@ function Resolve-RequiredPath([string]$Path, [string]$Name) {
     return (Resolve-Path $Path).Path
 }
 
+function Stop-RunningTargetProcesses {
+    # 只停止从本次 dist 目录运行的进程，避免误杀其他副本。
+    $targets = @()
+    foreach ($name in @("DataTransTool", "datatrans-core")) {
+        $processes = Get-Process -Name $name -ErrorAction SilentlyContinue
+        foreach ($process in $processes) {
+            $processPath = ""
+            try { $processPath = $process.Path } catch { }
+            if ($processPath -and ($processPath -like "$appDir*")) {
+                $targets += $process
+            }
+        }
+    }
+    if ($targets.Count -eq 0) {
+        return
+    }
+
+    foreach ($process in $targets) {
+        Write-Host "  检测到正在运行的 $($process.ProcessName) (PID $($process.Id))，先关闭…" -ForegroundColor Yellow
+        try { $process.CloseMainWindow() | Out-Null } catch { }
+    }
+    Start-Sleep -Seconds 2
+    foreach ($process in $targets) {
+        if (-not $process.HasExited) {
+            Write-Host "  强制结束 $($process.ProcessName) (PID $($process.Id))" -ForegroundColor Yellow
+            try {
+                Stop-Process -Id $process.Id -Force -ErrorAction Stop
+            } catch {
+                throw "无法停止 $($process.ProcessName) (PID $($process.Id))，请手动关闭后重试。"
+            }
+        }
+    }
+    Start-Sleep -Milliseconds 500
+}
+
 $QtDir = Resolve-RequiredPath $QtDir "Qt 目录"
 $MinGWDir = Resolve-RequiredPath $MinGWDir "MinGW 目录"
 $templatesDir = Resolve-RequiredPath $templatesDir "模板目录"
@@ -105,6 +140,7 @@ if (-not $SkipUi) {
 }
 
 Write-Step "组装离线目录"
+Stop-RunningTargetProcesses
 if (Test-Path $appDir) {
     Remove-Item -Recurse -Force $appDir
 }
@@ -144,11 +180,27 @@ foreach ($dll in @("libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll
 
 if (-not $SkipZip) {
     Write-Step "生成离线压缩包"
+    Stop-RunningTargetProcesses
     $zipPath = Join-Path $distDir "DataTransTool-$version-win64.zip"
-    if (Test-Path $zipPath) {
-        Remove-Item -Force $zipPath
+    $zipAttempts = 5
+    for ($attempt = 1; $attempt -le $zipAttempts; $attempt++) {
+        try {
+            if (Test-Path $zipPath) {
+                Remove-Item -Force $zipPath
+            }
+            Compress-Archive -Path (Join-Path $appDir "*") `
+                -DestinationPath $zipPath `
+                -CompressionLevel Optimal `
+                -ErrorAction Stop
+            break
+        } catch {
+            if ($attempt -ge $zipAttempts) {
+                throw "压缩失败（已重试 $zipAttempts 次）：$($_.Exception.Message)"
+            }
+            Write-Host "  压缩时文件被占用，第 $attempt 次重试…" -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
+        }
     }
-    Compress-Archive -Path (Join-Path $appDir "*") -DestinationPath $zipPath -CompressionLevel Optimal
     Write-Host ""
     Write-Host "完成：" -ForegroundColor Green
     Write-Host "  目录：$appDir"

@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="icons/transIcon.png">../icons/transIcon.png</file>
+        <file alias="icons/addFile.png">../icons/addFile.png</file>
+        <file alias="icons/removeFile.png">../icons/removeFile.png</file>
+        <file alias="icons/openFile.png">../icons/openFile.png</file>
+        <file alias="icons/cleanList.png">../icons/cleanList.png</file>
+    </qresource>
+</RCC>
