@@ -22,7 +22,6 @@ Makefile
 # Temporary output
 output/
 ~$*
-*.xlsx
 *.zip
 
 # ACL repair report (if created inside workspace)

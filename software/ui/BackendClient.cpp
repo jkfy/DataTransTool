@@ -46,7 +46,8 @@ bool BackendClient::prepareJobFile(const QStringList &inputs,
                                    const QString &outputDir,
                                    bool exportTc,
                                    bool exportEplan,
-                                   bool skipInvalid)
+                                   bool skipInvalid,
+                                   const QString &engine)
 {
     if (!QDir().mkpath(outputDir)) {
         emit failed(QStringLiteral("无法创建输出目录：%1").arg(outputDir));
@@ -72,6 +73,8 @@ bool BackendClient::prepareJobFile(const QStringList &inputs,
     options.insert(QStringLiteral("export_eplan"), exportEplan);
     options.insert(QStringLiteral("on_invalid"), skipInvalid ? QStringLiteral("skip")
                                                              : QStringLiteral("abort"));
+    options.insert(QStringLiteral("engine"),
+                   engine.isEmpty() ? QStringLiteral("auto") : engine);
 
     QJsonObject payload;
     payload.insert(QStringLiteral("job_id"),
@@ -144,7 +147,8 @@ bool BackendClient::startJob(const QStringList &inputs,
                              const QString &outputDir,
                              bool exportTc,
                              bool exportEplan,
-                             bool skipInvalid)
+                             bool skipInvalid,
+                             const QString &engine)
 {
     if (m_running) {
         emit failed(QStringLiteral("任务正在运行，请等待完成或先取消。"));
@@ -156,7 +160,7 @@ bool BackendClient::startJob(const QStringList &inputs,
     }
 
     resetJobFile();
-    if (!prepareJobFile(inputs, outputDir, exportTc, exportEplan, skipInvalid)) {
+    if (!prepareJobFile(inputs, outputDir, exportTc, exportEplan, skipInvalid, engine)) {
         return false;
     }
 

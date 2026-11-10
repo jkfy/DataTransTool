@@ -24,7 +24,8 @@ public:
                   const QString &outputDir,
                   bool exportTc,
                   bool exportEplan,
-                  bool skipInvalid);
+                  bool skipInvalid,
+                  const QString &engine = QStringLiteral("auto"));
     void cancel();
 
     QString lastJobPath() const { return m_lastJobPath; }
@@ -51,7 +52,8 @@ private:
                         const QString &outputDir,
                         bool exportTc,
                         bool exportEplan,
-                        bool skipInvalid);
+                        bool skipInvalid,
+                        const QString &engine);
     QString resolveProgram(QStringList &arguments, QString &workingDirectory, QString &error) const;
     void processStdout();
     void handleLine(const QString &line);

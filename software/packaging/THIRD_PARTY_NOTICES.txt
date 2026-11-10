@@ -27,10 +27,18 @@ DataTransTool 0.1.0 — 第三方组件说明
    License: GPLv2 with a special exception for bootloader / bundled applications
    https://pyinstaller.org/en/stable/license.html
 
-6. MinGW-w64 runtime (libgcc_s_seh-1.dll, libstdc++-6.dll, libwinpthread-1.dll)
+6. pywin32
+   Copyright (c) Mark Hammond and contributors.
+   License: Python Software Foundation License
+   https://github.com/mhammond/pywin32
+   仅 Windows 使用，用于通过 COM 调用本机 Microsoft Excel。
+
+7. MinGW-w64 runtime (libgcc_s_seh-1.dll, libstdc++-6.dll, libwinpthread-1.dll)
    Copyright (c) MinGW-w64 project / GCC contributors.
    License: GCC Runtime Library Exception
    https://gcc.gnu.org/onlinedocs/libstdc++/manual/license.html
+
+说明：Microsoft Excel 是目标机自行安装的商业软件，不随本程序分发。
 
 本目录中的程序代码版权归项目作者所有。若需闭源对外分发，请按上述许可证
 （尤其是 LGPLv3）保留版权声明、许可证文本和可替换库说明；具体合规事项请咨询法务。

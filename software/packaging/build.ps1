@@ -110,6 +110,9 @@ if (-not $SkipBackend) {
         --onedir `
         --name "datatrans-core" `
         --paths $backendDir `
+        --hidden-import win32com.client `
+        --hidden-import pythoncom `
+        --hidden-import pywintypes `
         --add-data "$templatesDir;templates" `
         --distpath $backendDist `
         --workpath (Join-Path $buildDir "pyinstaller") `

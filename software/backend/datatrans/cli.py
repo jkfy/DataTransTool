@@ -27,6 +27,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out-dir", help="输出目录")
     parser.add_argument("--templates", help="模板目录（默认自动查找 templates/）")
     parser.add_argument("--sheet", help="指定工作表；默认活动工作表")
+    parser.add_argument(
+        "--engine",
+        choices=("auto", "openpyxl", "excel"),
+        help="读写引擎：auto=先 openpyxl，失败后调用本机 Excel；openpyxl=只用标准库；excel=始终走 Excel COM",
+    )
     parser.add_argument("--tc", dest="export_tc", action="store_true", default=None)
     parser.add_argument("--no-tc", dest="export_tc", action="store_false")
     parser.add_argument("--eplan", dest="export_eplan", action="store_true", default=None)
@@ -67,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
             payload["templates_dir"] = args.templates
         if args.sheet:
             payload.setdefault("options", {})["sheet_name"] = args.sheet
+        if args.engine:
+            payload.setdefault("options", {})["engine"] = args.engine
         if args.export_tc is not None:
             payload.setdefault("options", {})["export_tc"] = args.export_tc
         if args.export_eplan is not None:

@@ -50,6 +50,7 @@ private:
     QStringList inputFiles() const;
     QString outputDirectory() const;
     QString defaultOutputDirectory() const;
+    QString engineMode() const;
     void appendLog(const QString &level, const QString &message);
     void setBusy(bool busy);
     void showResult(bool ok,

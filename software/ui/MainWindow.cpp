@@ -44,6 +44,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->skipInvalidCheck->setChecked(
         m_settings.value(QStringLiteral("skipInvalid"), false).toBool());
 
+    const int engineIndex = m_settings.value(QStringLiteral("engineIndex"), 0).toInt();
+    ui->engineCombo->setCurrentIndex(
+        (engineIndex >= 0 && engineIndex < ui->engineCombo->count()) ? engineIndex : 0);
+
     const QString lastOutput =
         m_settings.value(QStringLiteral("lastOutputDir"), defaultOutputDirectory()).toString();
     ui->outputEdit->setText(lastOutput);
@@ -202,6 +206,7 @@ void MainWindow::startProcessing()
     m_settings.setValue(QStringLiteral("exportTc"), ui->tcCheck->isChecked());
     m_settings.setValue(QStringLiteral("exportEplan"), ui->eplanCheck->isChecked());
     m_settings.setValue(QStringLiteral("skipInvalid"), ui->skipInvalidCheck->isChecked());
+    m_settings.setValue(QStringLiteral("engineIndex"), ui->engineCombo->currentIndex());
 
     ui->logEdit->clear();
     appendLog(QStringLiteral("INFO"),
@@ -214,7 +219,8 @@ void MainWindow::startProcessing()
     statusBar()->showMessage(QStringLiteral("正在启动后端…"));
 
     if (!m_backend->startJob(files, directory, ui->tcCheck->isChecked(),
-                             ui->eplanCheck->isChecked(), ui->skipInvalidCheck->isChecked())) {
+                             ui->eplanCheck->isChecked(), ui->skipInvalidCheck->isChecked(),
+                             engineMode())) {
         // startJob 失败时已经通过 failed 信号给出提示，这里只恢复界面状态。
         if (!m_backend->isRunning()) {
             setBusy(false);
@@ -354,7 +360,8 @@ void MainWindow::setBusy(bool busy)
                             static_cast<QWidget *>(ui->fileList),
                             static_cast<QWidget *>(ui->tcCheck),
                             static_cast<QWidget *>(ui->eplanCheck),
-                            static_cast<QWidget *>(ui->skipInvalidCheck)}) {
+                            static_cast<QWidget *>(ui->skipInvalidCheck),
+                            static_cast<QWidget *>(ui->engineCombo)}) {
         widget->setEnabled(!busy);
     }
     ui->cancelButton->setEnabled(busy);
@@ -387,6 +394,21 @@ QStringList MainWindow::inputFiles() const
 QString MainWindow::outputDirectory() const
 {
     return ui && ui->outputEdit ? ui->outputEdit->text().trimmed() : QString();
+}
+
+QString MainWindow::engineMode() const
+{
+    if (!ui || !ui->engineCombo) {
+        return QStringLiteral("auto");
+    }
+    switch (ui->engineCombo->currentIndex()) {
+    case 1:
+        return QStringLiteral("openpyxl");
+    case 2:
+        return QStringLiteral("excel");
+    default:
+        return QStringLiteral("auto");
+    }
 }
 
 QString MainWindow::defaultOutputDirectory() const

@@ -11,7 +11,7 @@
 |---|---|
 | `DataTransTool-0.1.0-win64.zip` | **离线运行包**。解压后双击 `DataTransTool.exe`，目标机无需 Python/Qt/联网 |
 | `DataTransTool-0.1.0-source.zip` | 源码压缩包，便于归档 |
-| `backend/` | Python 后端（读取、校验、映射、写 Excel、CLI 协议） |
+| `backend/` | Python 后端（openpyxl + 可选 Excel COM、校验、映射、CLI 协议） |
 | `ui/` | Qt/C++ 前端；`MainWindow.ui` 是可视化界面文件，`MainWindow.cpp` 是逻辑 |
 | `icons/` | 应用图标 `transIcon.png`，通过 `ui/app.qrc` 编进 exe |
 | `templates/` | 固定输出模板 |
@@ -32,6 +32,9 @@
 
 输出：`TC_*.xlsx`、`EPlan_*.xlsx`、`import_*.log`、`result.json`。
 
+如果输入文件被内网透明加密，程序会自动改用本机 Excel COM 读取/写出；这需要目标机安装
+Microsoft Excel，且 Excel 本身有权限打开该文件。程序不会绕过密码/IRM/权限。
+
 ## 在 software 目录内重新构建
 
 前提：Windows 10/11 64 位、Python 3.10+、Qt 6.5+（MinGW）、CMake 3.21+，构建机可联网安装 pip 依赖。
@@ -51,5 +54,6 @@ powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 ## 系统要求
 
 - Windows 10/11 64 位；
-- 运行包不需要安装 Python、Qt、Office，也不需要联网；
+- 普通 `.xlsx` 不需要安装 Python、Qt、Office，也不需要联网；
+- **透明加密文件**需要本机 Microsoft Excel：程序会自动用 Excel COM 读取/写出；
 - 未签名 exe 可能被内网杀毒/SmartScreen 拦截，建议代码签名或目录白名单。

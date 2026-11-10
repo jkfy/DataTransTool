@@ -14,7 +14,8 @@ from datatrans.headers import canonical_output_header, normalize_header
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
-SAMPLE = DATA / "inputExample-total.xlsx"
+# 测试用固定 3 行样本，避免需求方替换 data/ 下的真实样例后测试数字漂移。
+SAMPLE = ROOT / "backend" / "tests" / "fixtures" / "inputExample-total.xlsx"
 TEMPLATES = ROOT / "templates"
 
 
@@ -183,6 +184,36 @@ class TestValidation(BackendTestCase):
         self.assertIn("NO_EXPORT_TARGET", [issue.code for issue in result.issues])
         rows = self.load_rows(result.outputs["tc"])
         self.assertEqual(len(rows), 3)  # 表头 + 2 条勾选行
+
+    def test_note_row_is_skipped_without_validation_error(self) -> None:
+        path = self.copy_sample()
+        workbook = load_workbook(path)
+        worksheet = workbook.active
+        worksheet.merge_cells("A7:V7")
+        worksheet["A7"] = "注意：本表仅用于测试，以上数据请勿外传。"
+        workbook.save(path)
+        workbook.close()
+
+        result = self.run_job_for([path])
+        self.assertEqual(result.status, "success")
+        self.assertEqual(result.stats["rows_read"], 3)
+        self.assertIn("NOTE_ROW_SKIPPED", [issue.code for issue in result.issues])
+        self.assertNotIn("REQUIRED_FIELD_EMPTY", [issue.code for issue in result.issues])
+        rows = self.load_rows(result.outputs["tc"])
+        self.assertEqual(len(rows), 4)  # 表头 + 3 条数据
+
+    def test_note_word_in_remark_does_not_skip_valid_row(self) -> None:
+        path = self.copy_sample()
+        workbook = load_workbook(path)
+        worksheet = workbook.active
+        worksheet["L4"] = "注意安装方向"
+        workbook.save(path)
+        workbook.close()
+
+        result = self.run_job_for([path])
+        self.assertEqual(result.status, "success")
+        self.assertEqual(result.stats["rows_read"], 3)
+        self.assertNotIn("NOTE_ROW_SKIPPED", [issue.code for issue in result.issues])
 
     def test_invalid_dimension_aborts_only_when_eplan_requested(self) -> None:
         path = self.copy_sample()

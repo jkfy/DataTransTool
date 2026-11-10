@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import config
+from .excel_com import read_with_excel, write_table_with_excel
 from .mapper import map_eplan, map_tc
 from .models import FileSummary, Issue, JobOptions, JobResult, MaterialRecord
 from .reader import InputError, read_input_file
@@ -81,6 +82,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
         export_tc=_as_bool(options_raw.get("export_tc"), True),
         export_eplan=_as_bool(options_raw.get("export_eplan"), True),
         on_invalid=str(options_raw.get("on_invalid") or "abort").strip().lower(),
+        engine=str(options_raw.get("engine") or "auto").strip().lower(),
         sheet_name=(str(options_raw.get("sheet_name")).strip() or None)
         if options_raw.get("sheet_name")
         else None,
@@ -90,11 +92,14 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
     )
     if options.on_invalid not in {"abort", "skip"}:
         options.on_invalid = "abort"
+    if options.engine not in {"auto", "openpyxl", "excel"}:
+        options.engine = "auto"
 
     issues: list[Issue] = []
     files: list[FileSummary] = []
     records: list[MaterialRecord] = []
     written_rows = {"tc": 0, "eplan": 0}
+    used_excel = False
     logger: JobLogger | None = None
     result_path = Path(output_dir) / "result.json" if output_dir else Path()
 
@@ -178,6 +183,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
         export_tc=options.export_tc,
         export_eplan=options.export_eplan,
         on_invalid=options.on_invalid,
+        engine=options.engine,
     )
 
     _emit(
@@ -243,7 +249,33 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             continue
 
         try:
-            read_result = read_input_file(path, options.sheet_name)
+            if options.engine == "excel":
+                read_result = read_with_excel(path, options.sheet_name)
+            elif options.engine == "openpyxl":
+                read_result = read_input_file(path, options.sheet_name)
+            else:
+                try:
+                    read_result = read_input_file(path, options.sheet_name)
+                except Exception as openpyxl_exc:
+                    logger.warning(
+                        "openpyxl 读取失败，尝试用本机 Excel 读取（兼容加密文件）",
+                        file=str(path),
+                        error=str(openpyxl_exc),
+                    )
+                    try:
+                        read_result = read_with_excel(path, options.sheet_name)
+                    except Exception as excel_exc:
+                        raise InputError(
+                            f"openpyxl 读取失败：{openpyxl_exc}；"
+                            f"Excel COM 也失败：{excel_exc}"
+                        ) from excel_exc
+                    logger.info(
+                        "已切换到 Excel COM 读取",
+                        file=str(path),
+                        engine=read_result.engine,
+                    )
+            if read_result.engine == "excel":
+                used_excel = True
         except InputError as exc:
             issues.append(
                 _issue("error", "INPUT_ERROR", str(exc), file=str(path))
@@ -262,6 +294,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             continue
 
         summary.sheet = read_result.sheet
+        summary.engine = read_result.engine
         summary.rows_read = len(read_result.rows)
         for issue in read_result.issues:
             issues.append(issue)
@@ -271,6 +304,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             "读取完成",
             file=str(path),
             sheet=read_result.sheet,
+            engine=read_result.engine,
             rows=len(read_result.rows),
             header_row=read_result.header.row if read_result.header else None,
         )
@@ -350,6 +384,44 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
     output_paths = make_output_paths(output_dir, job_id=job_id)
     write_failed = False
 
+    def write_output(
+        kind: str,
+        output_path: Path,
+        rows: list[dict[str, Any]],
+    ) -> list[str]:
+        template = template_paths[kind]
+        use_excel_writer = options.engine == "excel" or (
+            options.engine == "auto" and used_excel
+        )
+        if use_excel_writer:
+            return write_table_with_excel(
+                kind=kind,
+                template_path=template,
+                output_path=output_path,
+                rows=rows,
+            )
+        try:
+            return write_table(
+                kind=kind,
+                template_path=template,
+                output_path=output_path,
+                rows=rows,
+            )
+        except OutputError as exc:
+            if options.engine != "auto":
+                raise
+            logger.warning(
+                "openpyxl 写出失败，尝试用本机 Excel 写出",
+                path=str(output_path),
+                error=str(exc),
+            )
+            return write_table_with_excel(
+                kind=kind,
+                template_path=template,
+                output_path=output_path,
+                rows=rows,
+            )
+
     if options.export_tc:
         _emit(
             progress,
@@ -362,11 +434,10 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             },
         )
         try:
-            unknown = write_table(
-                kind="tc",
-                template_path=template_paths["tc"],
-                output_path=output_paths["tc"],
-                rows=[map_tc(record) for record in tc_records],
+            unknown = write_output(
+                "tc",
+                output_paths["tc"],
+                [map_tc(record) for record in tc_records],
             )
             outputs["tc"] = str(output_paths["tc"])
             written_rows["tc"] = len(tc_records)
@@ -397,11 +468,10 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             },
         )
         try:
-            unknown = write_table(
-                kind="eplan",
-                template_path=template_paths["eplan"],
-                output_path=output_paths["eplan"],
-                rows=[map_eplan(record) for record in eplan_records],
+            unknown = write_output(
+                "eplan",
+                output_paths["eplan"],
+                [map_eplan(record) for record in eplan_records],
             )
             outputs["eplan"] = str(output_paths["eplan"])
             written_rows["eplan"] = len(eplan_records)

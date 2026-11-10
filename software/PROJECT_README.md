@@ -3,7 +3,7 @@
 把物料总表（`.xlsx`）按固定模板转换成 **TC 表** 和 **Eplan 表** 的桌面小工具。
 
 - 前端：Qt 6 / C++（Widgets）
-- 后端：Python 3 + openpyxl，以独立 CLI 进程运行
+- 后端：Python 3 + openpyxl（可选本机 Excel COM 兼容加密文件），以独立 CLI 进程运行
 - 通信：Qt `QProcess` + JSON 任务文件 + stdout JSONL 进度
 - 交付：PyInstaller 打包后端、windeployqt 收集 Qt 运行库，最终生成一个可离线运行的 zip
 
@@ -17,6 +17,7 @@
 - `EPLAN` / `新TC` 勾选决定进入哪张输出表；
 - TC / Eplan 固定模板输出；
 - 文本日志 + `result.json` + 界面进度/错误提示；
+- **加密文件兼容**：openpyxl 读取失败时自动改用本机 Excel COM（pywin32）；
 - 默认“有错误整批不导出”，可勾选“跳过错误行继续导出”；
 - 一键打包脚本，产出离线 zip。
 
@@ -117,6 +118,39 @@ DataTransTool/
 - `import_YYYYMMDD_HHMMSS_xxxxxx.log`（UTF-8 with BOM，Windows 记事本可直接看）
 - `result.json`（结构化结果，供界面显示/排错）
 
+## 加密文件 / Excel COM 兼容模式
+
+内网电脑如果装了透明加密/DLP，`.xlsx` 在磁盘上可能不是正常的 ZIP 结构，
+openpyxl 直接读字节会报 `file is not a zip file`。程序增加了 **Excel COM 兼容模式**：
+
+- 默认 `engine=auto`：先用 openpyxl 读；失败后自动调用本机 Excel（pywin32 COM）打开文件，
+  由 Excel 按当前 Windows 用户的权限解密，再通过 COM 把单元格值交给后端；
+- 如果本次输入用了 Excel，输出也改用 Excel 打开模板、写入并另存，避免输出文件再次被 DLP 影响；
+- 界面“输出设置”里的“读取方式”可选“自动 / 标准（openpyxl）/ Excel 兼容（调用本机 Excel）”，
+  默认“自动”；日志里会显示“openpyxl 读取失败，尝试用本机 Excel 读取”和 `engine=excel`；
+- CLI 可显式指定：
+
+```powershell
+# 自动（默认）
+datatrans-core.exe --engine auto ...
+
+# 只用 openpyxl
+datatrans-core.exe --engine openpyxl ...
+
+# 始终用本机 Excel COM
+datatrans-core.exe --engine excel ...
+```
+
+前提和限制：
+
+- 目标机必须安装 **Microsoft Excel**（2016/2019/365 均可），且 Excel 本身能正常打开该文件；
+- 打包已包含 pywin32；源码运行需 `pip install -r backend\requirements.txt`；
+- **这不是绕过加密**：密码、IRM/RMS 权限、DLP 策略仍然生效。若文件是密码/IRM 保护的 OLE 格式，
+  程序会直接报错并提示另存/授权，不会尝试破解或绕过密码；
+- 如果 DLP 禁止 Excel 自动化/COM，或 Excel 弹出了必须人工处理的对话框，程序无法绕过；
+  需要 IT 放开策略、手动另存为普通 `.xlsx`，或提供有权限的副本；
+- Excel COM 比 openpyxl 慢（通常十几秒/个文件；首次调用可能因 Excel 冷启动/杀毒扫描更慢）。
+
 ## 运行
 
 ### 方式一：直接运行离线包
@@ -125,7 +159,8 @@ DataTransTool/
 2. 双击 `DataTransTool.exe`。
 3. 添加 `.xlsx` 文件、选择输出目录、点击“开始处理”。
 
-目标机不需要安装 Python、Qt，也不需要联网。详细说明见包内 `README.txt`。
+普通 `.xlsx` 不需要安装 Python、Qt、Office，也不需要联网；如果处理的是透明加密文件，
+需要目标机安装本机 Excel（见上一节）。详细说明见包内 `README.txt`。
 
 ### 方式二：源码开发模式
 
@@ -257,7 +292,8 @@ $env:DATATRANS_NO_DIALOGS = "1"
 - `DataTransTool.exe` + Qt DLL + 插件；
 - `backend\datatrans-core.exe` + PyInstaller 自带的 Python 运行时；
 - `templates\` 固定模板；
-- 不需要目标机安装 Python、Qt、Office 或联网。
+- 普通 `.xlsx` 不需要目标机安装 Python、Qt、Office 或联网；
+- 透明加密文件需要本机 Excel 才能走 COM 兼容模式。
 
 把 zip 拷进内网，解压到任意目录，双击 `DataTransTool.exe` 即可。注意：
 
@@ -282,6 +318,8 @@ $env:DATATRANS_NO_DIALOGS = "1"
 - Python（PSF License）
 - openpyxl（MIT）
 - et_xmlfile（MIT）
+- pywin32（PSF License；仅 Windows，用于 Excel COM 兼容模式）
+- Microsoft Excel（目标机安装，商业软件；不随包分发）
 - Qt 6（LGPLv3 / GPLv3 / 商业许可，按实际分发方式遵守）
 - PyInstaller（GPLv2 + bootloader exception）
 - MinGW runtime（GCC Runtime Library Exception）
@@ -296,5 +334,8 @@ $env:DATATRANS_NO_DIALOGS = "1"
 | 提示“只支持 .xlsx” | 输入必须是 `.xlsx`；`.xls`/`.xlsm` 请先另存为 `.xlsx` |
 | 提示输出文件被占用 | 关闭 Excel 中打开的同名输出文件后重试 |
 | 校验失败 | 打开输出目录的 `import_*.log`，按 file/sheet/row/field 定位 |
+| 加密文件报 `file is not a zip file` | 确认目标机装有 Excel；程序会自动切换 Excel COM；查看日志是否出现 `engine=excel` |
+| 提示“受密码/IRM 保护的 OLE 格式” | 程序不绕过密码；请提供密码后另存，或让管理员导出未加密 `.xlsx` |
+| Excel 弹出密码/权限框卡住 | 先手动打开确认权限；必要时让 IT 放开 DLP/COM 策略 |
 | 中文日志乱码 | 日志是 UTF-8 with BOM；用记事本/VS Code 打开；不要用旧版 ANSI 编辑器 |
 | 程序启动报缺少 DLL | 确认解压完整，Qt DLL 与 `platforms\` 目录未被删 |

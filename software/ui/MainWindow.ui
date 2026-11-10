@@ -28,8 +28,7 @@
     <activeoff>:/icons/transIcon.png</activeoff>
     <activeon>:/icons/transIcon.png</activeon>
     <selectedoff>:/icons/transIcon.png</selectedoff>
-    <selectedon>:/icons/transIcon.png</selectedon>
-   </iconset>
+    <selectedon>:/icons/transIcon.png</selectedon>:/icons/transIcon.png</iconset>
   </property>
   <property name="styleSheet">
    <string notr="true">QMainWindow {
@@ -55,7 +54,7 @@ QGroupBox::title {
     background-color: #e8f4ff;
     border-radius: 6px;
 }
-QLineEdit, QListWidget, QPlainTextEdit {
+QLineEdit, QListWidget, QPlainTextEdit, QComboBox {
     border: 1px solid #c7dcf2;
     border-radius: 7px;
     padding: 7px;
@@ -64,8 +63,18 @@ QLineEdit, QListWidget, QPlainTextEdit {
     selection-background-color: #cfe6ff;
     selection-color: #17375e;
 }
-QLineEdit:focus, QListWidget:focus, QPlainTextEdit:focus {
+QLineEdit:focus, QListWidget:focus, QPlainTextEdit:focus, QComboBox:focus {
     border: 1px solid #6aa9e8;
+}
+QComboBox {
+    padding-right: 26px;
+}
+QComboBox QAbstractItemView {
+    background: #ffffff;
+    border: 1px solid #c7dcf2;
+    selection-background-color: #d8ecff;
+    selection-color: #17375e;
+    outline: none;
 }
 QPushButton {
     border: 1px solid #bcd8f3;
@@ -302,16 +311,15 @@ QStatusBar {
            <property name="text">
             <string>添加文件…</string>
            </property>
+           <property name="icon">
+            <iconset resource="app.qrc">
+             <normaloff>:/icons/addFile.png</normaloff>:/icons/addFile.png</iconset>
+           </property>
            <property name="iconSize">
             <size>
              <width>18</width>
              <height>18</height>
             </size>
-           </property>
-           <property name="icon">
-            <iconset resource="app.qrc">
-             <normaloff>:/icons/addFile.png</normaloff>
-            </iconset>
            </property>
           </widget>
          </item>
@@ -326,16 +334,15 @@ QStatusBar {
            <property name="text">
             <string>移除选中</string>
            </property>
+           <property name="icon">
+            <iconset resource="app.qrc">
+             <normaloff>:/icons/removeFile.png</normaloff>:/icons/removeFile.png</iconset>
+           </property>
            <property name="iconSize">
             <size>
              <width>18</width>
              <height>18</height>
             </size>
-           </property>
-           <property name="icon">
-            <iconset resource="app.qrc">
-             <normaloff>:/icons/removeFile.png</normaloff>
-            </iconset>
            </property>
           </widget>
          </item>
@@ -350,16 +357,15 @@ QStatusBar {
            <property name="text">
             <string>清空列表</string>
            </property>
+           <property name="icon">
+            <iconset resource="app.qrc">
+             <normaloff>:/icons/cleanList.png</normaloff>:/icons/cleanList.png</iconset>
+           </property>
            <property name="iconSize">
             <size>
              <width>18</width>
              <height>18</height>
             </size>
-           </property>
-           <property name="icon">
-            <iconset resource="app.qrc">
-             <normaloff>:/icons/cleanList.png</normaloff>
-            </iconset>
            </property>
           </widget>
          </item>
@@ -412,7 +418,7 @@ QStatusBar {
        <item row="0" column="1">
         <widget class="QLineEdit" name="outputEdit">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
            <horstretch>1</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -424,19 +430,24 @@ QStatusBar {
        </item>
        <item row="0" column="2">
         <widget class="QPushButton" name="browseButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
           <string>浏览…</string>
+         </property>
+         <property name="icon">
+          <iconset resource="app.qrc">
+           <normaloff>:/icons/openFile.png</normaloff>:/icons/openFile.png</iconset>
          </property>
          <property name="iconSize">
           <size>
            <width>18</width>
            <height>18</height>
           </size>
-         </property>
-         <property name="icon">
-          <iconset resource="app.qrc">
-           <normaloff>:/icons/openFile.png</normaloff>
-          </iconset>
          </property>
         </widget>
        </item>
@@ -493,17 +504,46 @@ QStatusBar {
          </item>
         </layout>
        </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="engineLabel">
+         <property name="text">
+          <string>读取方式</string>
+         </property>
+        </widget>
+       </item>
        <item row="2" column="1" colspan="2">
+        <widget class="QComboBox" name="engineCombo">
+         <property name="toolTip">
+          <string>自动：先用 openpyxl，失败后调用本机 Excel（适合内网加密文件）。Excel 兼容：始终调用本机 Excel。标准：只用 openpyxl。</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>自动（推荐，兼容加密文件）</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>标准（openpyxl,适合无加密文件，读取速度快）</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Excel 兼容（调用本机 Excel，加密文件）</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="3" column="1" colspan="2">
         <widget class="QCheckBox" name="skipInvalidCheck">
          <property name="text">
           <string>跳过错误行继续导出（默认关闭）</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="1" colspan="2">
+       <item row="4" column="1" colspan="2">
         <widget class="QLabel" name="outputHintLabel">
          <property name="text">
-          <string>默认策略：发现必填项错误时整批不导出，只生成日志。</string>
+          <string>默认策略：发现必填项错误时整批不导出，只生成日志；加密文件会自动调用本机 Excel。</string>
          </property>
         </widget>
        </item>

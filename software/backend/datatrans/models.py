@@ -111,6 +111,7 @@ class FileSummary:
     rows_valid: int = 0
     rows_invalid: int = 0
     error: str = ""
+    engine: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -120,6 +121,7 @@ class FileSummary:
             "rows_valid": self.rows_valid,
             "rows_invalid": self.rows_invalid,
             "error": self.error,
+            "engine": self.engine,
         }
 
 
@@ -129,6 +131,7 @@ class JobOptions:
     export_tc: bool = True
     export_eplan: bool = True
     on_invalid: str = "abort"  # abort / skip
+    engine: str = "auto"  # auto / openpyxl / excel
     sheet_name: str | None = None
     templates_dir: str | None = None
 
