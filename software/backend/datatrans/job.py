@@ -1,4 +1,4 @@
-"""任务编排：读取 -> 校验 -> 映射 -> 写 TC/Eplan -> 日志/结果。"""
+"""任务编排：读取 -> 校验 -> 写 TC / EPLAN XML -> 日志/结果。"""
 
 from __future__ import annotations
 
@@ -9,12 +9,13 @@ from typing import Any, Callable
 
 from . import config
 from .excel_com import read_with_excel, write_table_with_excel
-from .mapper import map_eplan, map_tc
+from .mapper import map_tc
 from .models import FileSummary, Issue, JobOptions, JobResult, MaterialRecord
 from .reader import InputError, read_input_file
-from .report import JobLogger, format_issue, write_result_json
+from .report import JobLogger, write_result_json
 from .validator import parse_record
 from .writer import OutputError, make_output_paths, write_table
+from .xml_writer import write_parts_xml
 
 ProgressCallback = Callable[[dict[str, Any]], None]
 
@@ -25,7 +26,6 @@ def _emit(callback: ProgressCallback | None, payload: dict[str, Any]) -> None:
     try:
         callback(payload)
     except Exception:
-        # 进度输出失败不应影响实际任务。
         pass
 
 
@@ -80,7 +80,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
     options = JobOptions(
         output_dir=output_dir,
         export_tc=_as_bool(options_raw.get("export_tc"), True),
-        export_eplan=_as_bool(options_raw.get("export_eplan"), True),
+        export_xml=_as_bool(options_raw.get("export_xml"), False),
         on_invalid=str(options_raw.get("on_invalid") or "abort").strip().lower(),
         engine=str(options_raw.get("engine") or "auto").strip().lower(),
         sheet_name=(str(options_raw.get("sheet_name")).strip() or None)
@@ -98,7 +98,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
     issues: list[Issue] = []
     files: list[FileSummary] = []
     records: list[MaterialRecord] = []
-    written_rows = {"tc": 0, "eplan": 0}
+    written_rows = {"tc": 0, "xml": 0}
     used_excel = False
     logger: JobLogger | None = None
     result_path = Path(output_dir) / "result.json" if output_dir else Path()
@@ -118,11 +118,8 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             "rows_read": sum(item.rows_read for item in files),
             "rows_valid": sum(item.rows_valid for item in files),
             "rows_invalid": sum(item.rows_invalid for item in files),
-            "rows_unchecked": sum(
-                1 for record in records if not record.eplan and not record.new_tc
-            ),
             "tc_rows": written_rows["tc"],
-            "eplan_rows": written_rows["eplan"],
+            "xml_rows": written_rows["xml"],
             "errors": error_count,
             "warnings": warning_count,
             "duration_ms": duration_ms,
@@ -131,7 +128,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             job_id=job_id,
             status=status,
             ok=(status != "failed") if ok is None else ok,
-            outputs=outputs or {"tc": None, "eplan": None},
+            outputs=outputs or {"tc": None, "xml": None},
             stats=stats,
             issues=issues,
             log_path=str(logger.log_path) if logger else "",
@@ -158,9 +155,9 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
     if not inputs:
         issues.append(_issue("error", "INPUT_MISSING", "未选择任何输入文件"))
         return finish("failed", "未选择任何输入文件")
-    if not options.export_tc and not options.export_eplan:
-        issues.append(_issue("error", "NO_OUTPUT_SELECTED", "至少选择生成一种输出表"))
-        return finish("failed", "至少选择生成一种输出表")
+    if not options.export_tc and not options.export_xml:
+        issues.append(_issue("error", "NO_OUTPUT_SELECTED", "至少选择生成一种输出文件"))
+        return finish("failed", "至少选择生成一种输出文件")
 
     try:
         Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -181,7 +178,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
         inputs=len(inputs),
         output_dir=output_dir,
         export_tc=options.export_tc,
-        export_eplan=options.export_eplan,
+        export_xml=options.export_xml,
         on_invalid=options.on_invalid,
         engine=options.engine,
     )
@@ -197,10 +194,9 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
         },
     )
 
-    # 模板检查放在读文件之前，避免读完才发现模板缺失。
     template_paths = {
         "tc": config.template_path("tc", options.templates_dir) if options.export_tc else None,
-        "eplan": config.template_path("eplan", options.templates_dir) if options.export_eplan else None,
+        "xml": config.template_path("xml", options.templates_dir) if options.export_xml else None,
     }
     for kind, path in template_paths.items():
         if path is not None and not Path(path).exists():
@@ -277,9 +273,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             if read_result.engine == "excel":
                 used_excel = True
         except InputError as exc:
-            issues.append(
-                _issue("error", "INPUT_ERROR", str(exc), file=str(path))
-            )
+            issues.append(_issue("error", "INPUT_ERROR", str(exc), file=str(path)))
             summary.error = str(exc)
             files.append(summary)
             logger.issue(issues[-1])
@@ -311,12 +305,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
 
         for raw in read_result.rows:
             row_issues: list[Issue] = []
-            record = parse_record(
-                raw,
-                row_issues,
-                export_tc=options.export_tc,
-                export_eplan=options.export_eplan,
-            )
+            record = parse_record(raw, row_issues)
             for issue in row_issues:
                 issues.append(issue)
                 logger.issue(issue)
@@ -339,7 +328,6 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             },
         )
 
-    # 跨文件重复提醒（不自动去重，避免静默改变业务数据）。
     seen: dict[tuple[str, str], MaterialRecord] = {}
     for record in records:
         key = (record.code, record.part_no)
@@ -348,7 +336,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
                 _issue(
                     "warning",
                     "DUPLICATE_ROW",
-                    f"代号/部件编号重复：{record.code} / {record.part_no}",
+                    f"类型编号/部件编号重复：{record.code} / {record.part_no}",
                     file=record.source_file,
                     sheet=record.source_sheet,
                     row=record.source_row,
@@ -359,9 +347,6 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             seen[key] = record
 
     error_count = sum(1 for issue in issues if issue.level == "error")
-    warning_count = sum(1 for issue in issues if issue.level == "warning")
-
-    outputs: dict[str, str | None] = {"tc": None, "eplan": None}
 
     if has_template_error:
         return finish("failed", "输出模板缺失，未生成文件")
@@ -374,53 +359,18 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
         )
 
     valid_records = [record for record in records if record.valid]
-    tc_records = [record for record in valid_records if options.export_tc and record.new_tc]
-    eplan_records = [record for record in valid_records if options.export_eplan and record.eplan]
+    tc_records = list(valid_records) if options.export_tc else []
+    xml_records = list(valid_records) if options.export_xml else []
 
-    if not tc_records and not eplan_records:
+    if not tc_records and not xml_records:
         logger.warning("没有可导出的数据行")
         issues.append(_issue("warning", "NO_EXPORT_ROWS", "没有可导出的数据行"))
 
     output_paths = make_output_paths(output_dir, job_id=job_id)
+    outputs: dict[str, str | None] = {"tc": None, "xml": None}
     write_failed = False
-
-    def write_output(
-        kind: str,
-        output_path: Path,
-        rows: list[dict[str, Any]],
-    ) -> list[str]:
-        template = template_paths[kind]
-        use_excel_writer = options.engine == "excel" or (
-            options.engine == "auto" and used_excel
-        )
-        if use_excel_writer:
-            return write_table_with_excel(
-                kind=kind,
-                template_path=template,
-                output_path=output_path,
-                rows=rows,
-            )
-        try:
-            return write_table(
-                kind=kind,
-                template_path=template,
-                output_path=output_path,
-                rows=rows,
-            )
-        except OutputError as exc:
-            if options.engine != "auto":
-                raise
-            logger.warning(
-                "openpyxl 写出失败，尝试用本机 Excel 写出",
-                path=str(output_path),
-                error=str(exc),
-            )
-            return write_table_with_excel(
-                kind=kind,
-                template_path=template,
-                output_path=output_path,
-                rows=rows,
-            )
+    write_total = int(options.export_tc) + int(options.export_xml)
+    write_index = 0
 
     if options.export_tc:
         _emit(
@@ -428,17 +378,42 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             {
                 "type": "progress",
                 "stage": "write",
-                "current": 0,
-                "total": 2,
+                "current": write_index,
+                "total": write_total,
                 "message": f"写出 TC 表（{len(tc_records)} 行）",
             },
         )
         try:
-            unknown = write_output(
-                "tc",
-                output_paths["tc"],
-                [map_tc(record) for record in tc_records],
+            rows = [map_tc(record) for record in tc_records]
+            use_excel_writer = options.engine == "excel" or (
+                options.engine == "auto" and used_excel
             )
+            if use_excel_writer:
+                unknown = write_table_with_excel(
+                    template_path=template_paths["tc"],
+                    output_path=output_paths["tc"],
+                    rows=rows,
+                )
+            else:
+                try:
+                    unknown = write_table(
+                        template_path=template_paths["tc"],
+                        output_path=output_paths["tc"],
+                        rows=rows,
+                    )
+                except OutputError as exc:
+                    if options.engine != "auto":
+                        raise
+                    logger.warning(
+                        "openpyxl 写出失败，尝试用本机 Excel 写出",
+                        path=str(output_paths["tc"]),
+                        error=str(exc),
+                    )
+                    unknown = write_table_with_excel(
+                        template_path=template_paths["tc"],
+                        output_path=output_paths["tc"],
+                        rows=rows,
+                    )
             outputs["tc"] = str(output_paths["tc"])
             written_rows["tc"] = len(tc_records)
             logger.info("TC 表写出完成", path=str(output_paths["tc"]), rows=len(tc_records))
@@ -455,55 +430,47 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             write_failed = True
             issues.append(_issue("error", "OUTPUT_ERROR", str(exc), field_name="tc"))
             logger.issue(issues[-1])
+        write_index += 1
 
-    if options.export_eplan:
+    if options.export_xml:
         _emit(
             progress,
             {
                 "type": "progress",
                 "stage": "write",
-                "current": 1,
-                "total": 2,
-                "message": f"写出 Eplan 表（{len(eplan_records)} 行）",
+                "current": write_index,
+                "total": write_total,
+                "message": f"写出 EPLAN XML（{len(xml_records)} 行）",
             },
         )
         try:
-            unknown = write_output(
-                "eplan",
-                output_paths["eplan"],
-                [map_eplan(record) for record in eplan_records],
+            write_parts_xml(
+                template_paths["xml"],
+                output_paths["xml"],
+                xml_records,
             )
-            outputs["eplan"] = str(output_paths["eplan"])
-            written_rows["eplan"] = len(eplan_records)
-            logger.info("Eplan 表写出完成", path=str(output_paths["eplan"]), rows=len(eplan_records))
-            if unknown:
-                issues.append(
-                    _issue(
-                        "warning",
-                        "UNKNOWN_OUTPUT_HEADER",
-                        "Eplan 模板中存在未识别的表头，已保持空白：" + "、".join(unknown),
-                    )
-                )
-                logger.issue(issues[-1])
+            outputs["xml"] = str(output_paths["xml"])
+            written_rows["xml"] = len(xml_records)
+            logger.info("XML 写出完成", path=str(output_paths["xml"]), rows=len(xml_records))
         except OutputError as exc:
             write_failed = True
-            issues.append(_issue("error", "OUTPUT_ERROR", str(exc), field_name="eplan"))
+            issues.append(_issue("error", "OUTPUT_ERROR", str(exc), field_name="xml"))
             logger.issue(issues[-1])
+        write_index += 1
 
     if write_failed:
-        # 只要有一个输出失败，就不把任务报告为完全成功。
         successful = [path for path in outputs.values() if path]
         status = "partial" if successful else "failed"
         message = "部分输出失败，请查看日志" if successful else "输出文件写出失败"
         return finish(status, message, outputs)
 
-    status = "success" if error_count == 0 and (tc_records or eplan_records) else "partial"
+    status = "success" if error_count == 0 and (tc_records or xml_records) else "partial"
     if status == "success":
-        message = f"完成：{len(files)} 个文件，TC {len(tc_records)} 行，Eplan {len(eplan_records)} 行"
+        message = f"完成：{len(files)} 个文件，TC {len(tc_records)} 行，XML {len(xml_records)} 行"
     elif error_count:
         message = (
             f"完成（跳过 {sum(item.rows_invalid for item in files)} 行错误数据）："
-            f"TC {len(tc_records)} 行，Eplan {len(eplan_records)} 行"
+            f"TC {len(tc_records)} 行，XML {len(xml_records)} 行"
         )
     else:
         message = "完成，但没有可导出的数据行（已生成空表）"
@@ -512,8 +479,8 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
         {
             "type": "progress",
             "stage": "write",
-            "current": 2,
-            "total": 2,
+            "current": write_total,
+            "total": write_total,
             "message": "输出完成",
         },
     )

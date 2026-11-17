@@ -64,6 +64,16 @@ void UiSmokeTest::processSample()
     }
     QVERIFY(startButton);
 
+    QCheckBox *xmlCheck = nullptr;
+    for (QCheckBox *check : window.findChildren<QCheckBox *>()) {
+        if (check->text().contains(QStringLiteral("XML"))) {
+            xmlCheck = check;
+            break;
+        }
+    }
+    QVERIFY(xmlCheck);
+    xmlCheck->setChecked(true);
+
     startButton->click();
 
     QTRY_VERIFY_WITH_TIMEOUT(
@@ -74,7 +84,8 @@ void UiSmokeTest::processSample()
              qPrintable(log->toPlainText()));
 
     const QStringList files = QDir(output.path()).entryList(
-        {QStringLiteral("TC_*.xlsx"), QStringLiteral("EPlan_*.xlsx")}, QDir::Files);
+        {QStringLiteral("TC_*.xlsx"), QStringLiteral("XML_*.xml")},
+        QDir::Files);
     QCOMPARE(files.size(), 2);
 
     window.close();

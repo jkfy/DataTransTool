@@ -10,7 +10,6 @@ from typing import Any
 from . import config
 from .models import Issue, MaterialRecord, RawRow
 
-
 _NUMBER_RE = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$")
 
 
@@ -79,40 +78,12 @@ def _issue(
     )
 
 
-def parse_check(
-    value: Any,
-    raw: RawRow,
-    field_name: str,
-    issues: list[Issue],
-) -> bool:
-    """解析 EPLAN / 新TC 勾选列。空值按未勾选处理。"""
-    if is_blank(value):
-        return False
-    text = to_text(value).upper().strip()
-    if text in config.TRUE_VALUES:
-        return True
-    if text in config.FALSE_VALUES:
-        return False
-    issues.append(
-        _issue(
-            "warning",
-            "UNKNOWN_CHECK_VALUE",
-            f"“{field_name}”的值无法识别为勾选/未勾选，按未勾选处理",
-            raw,
-            field_name,
-            value,
-        )
-    )
-    return False
+def parse_record(raw: RawRow, issues: list[Issue]) -> MaterialRecord:
+    """解析一行，按最新设计 1.3 校验。
 
-
-def parse_record(
-    raw: RawRow,
-    issues: list[Issue],
-    *,
-    export_tc: bool = True,
-    export_eplan: bool = True,
-) -> MaterialRecord:
+    必填：部件编号、类型编号、名称1、制造商、供应商。
+    重量/宽/高/深：空按 0，负数/非数字报错。
+    """
     values = raw.values
     record = MaterialRecord(
         source_file=raw.file,
@@ -120,33 +91,24 @@ def parse_record(
         source_row=raw.row,
     )
 
-    record.eplan = parse_check(values.get("EPLAN"), raw, "EPLAN", issues)
-    record.new_tc = parse_check(values.get("新TC"), raw, "新TC", issues)
-
-    # 文本字段
-    record.material_type = to_text(values.get("物料类型")) or config.DEFAULT_MATERIAL_TYPE
-    record.applicant = to_text(values.get("申请人"))
-    record.material_code = to_text(values.get("物料编码"))
-    record.long_description = to_text(values.get("长描述"))
-    record.name = to_text(values.get("名称"))
-    record.code = to_text(values.get("代号"))
-    record.spec = to_text(values.get("规格"))
-    record.material = to_text(values.get("材质")) or config.DEFAULT_MATERIAL
+    record.serial = to_text(values.get("序号"))
     record.part_no = to_text(values.get("部件编号"))
-    record.remark = to_text(values.get("备注"))
-    record.voltage = to_text(values.get("额定电压"))
-    record.power = to_text(values.get("额定功率"))
+    record.erp_code = to_text(values.get("ERP编码"))
+    record.code = to_text(values.get("类型编号"))
+    record.name = to_text(values.get("名称"))
+    record.manufacturer = to_text(values.get("制造商"))
+    record.supplier = to_text(values.get("供应商"))
     record.description = to_text(values.get("描述"))
-    record.outer_diameter = to_text(values.get("外径"))
-    record.core_count = to_text(values.get("线芯数"))
+    record.quantity_unit = to_text(values.get("数量单位")) or config.DEFAULT_UNIT
 
     has_error = False
 
-    # 设计文档 1.3 的三个必填项
-    for field_name, field_value in (
-        ("代号", record.code),
-        ("部件编号", record.part_no),
-        ("备注", record.remark),
+    for field_label, field_value, raw_value, field_name in (
+        ("部件编号", record.part_no, values.get("部件编号"), "部件编号"),
+        ("类型编号", record.code, values.get("类型编号"), "类型编号"),
+        ("名称1", record.name, values.get("名称"), "名称"),
+        ("制造商", record.manufacturer, values.get("制造商"), "制造商"),
+        ("供应商", record.supplier, values.get("供应商"), "供应商"),
     ):
         if not field_value:
             has_error = True
@@ -154,90 +116,50 @@ def parse_record(
                 _issue(
                     "error",
                     "REQUIRED_FIELD_EMPTY",
-                    f"{field_name}不能为空",
+                    f"{field_label}不能为空",
                     raw,
                     field_name,
-                    values.get(field_name),
+                    raw_value,
                 )
             )
 
-    if not record.name:
-        issues.append(
-            _issue(
-                "warning",
-                "NAME_EMPTY",
-                "名称为空，输出的名称列也会为空",
-                raw,
-                "名称",
-                values.get("名称"),
-            )
-        )
-
-    if not record.eplan and not record.new_tc:
-        issues.append(
-            _issue(
-                "warning",
-                "NO_EXPORT_TARGET",
-                "EPLAN 和 新TC 都未勾选，该行不会进入任何输出表",
-                raw,
-            )
-        )
-
-    # 重量只影响 TC；尺寸只影响 Eplan。未勾选/未启用对应输出时不因该字段阻断。
-    if record.new_tc and export_tc:
-        weight_value = values.get("重量")
+    for field_label, field_name, attr in (
+        ("重量", "重量", "weight"),
+        ("宽度", "宽", "width"),
+        ("高度", "高", "height"),
+        ("深度", "深", "depth"),
+    ):
+        value = values.get(field_name)
         try:
-            record.weight = to_number(weight_value)
+            number = to_number(value)
         except ValueError as exc:
             has_error = True
             issues.append(
                 _issue(
                     "error",
                     "INVALID_NUMBER",
-                    f"重量必须是数字（{exc}）",
+                    f"{field_label}必须是数字（{exc}）",
                     raw,
-                    "重量",
-                    weight_value,
+                    field_name,
+                    value,
                 )
             )
-
-    if record.eplan and export_eplan:
-        for field_name, attr, default_zero in (
-            ("宽", "width", True),
-            ("高", "height", True),
-            ("深", "depth", True),
-        ):
-            value = values.get(field_name)
-            try:
-                number = to_number(value)
-            except ValueError as exc:
-                has_error = True
-                issues.append(
-                    _issue(
-                        "error",
-                        "INVALID_NUMBER",
-                        f"{field_name}必须是数字（{exc}）",
-                        raw,
-                        field_name,
-                        value,
-                    )
+            continue
+        if number is None:
+            number = 0.0
+        elif number < 0:
+            has_error = True
+            issues.append(
+                _issue(
+                    "error",
+                    "NEGATIVE_NUMBER",
+                    f"{field_label}不能为负数",
+                    raw,
+                    field_name,
+                    value,
                 )
-                continue
-            if number is None:
-                number = 0.0 if default_zero else None
-            elif number < 0:
-                has_error = True
-                issues.append(
-                    _issue(
-                        "error",
-                        "NEGATIVE_NUMBER",
-                        f"{field_name}不能为负数",
-                        raw,
-                        field_name,
-                        value,
-                    )
-                )
-            setattr(record, attr, number)
+            )
+        setattr(record, attr, number)
 
     record.valid = not has_error
     return record

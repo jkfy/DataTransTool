@@ -41,7 +41,8 @@ int main(int argc, char *argv[])
 
     QTimer::singleShot(0, [&client, argv]() {
         const bool started = client.startJob({QString::fromLocal8Bit(argv[1])},
-                                             QString::fromLocal8Bit(argv[2]), true, true, false);
+                                             QString::fromLocal8Bit(argv[2]),
+                                             true, false, false);
         if (!started) {
             qCritical() << "startJob returned false";
         }

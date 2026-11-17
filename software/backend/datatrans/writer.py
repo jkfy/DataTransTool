@@ -1,4 +1,4 @@
-"""按固定模板写出 TC / Eplan 工作簿。"""
+"""按固定模板写出 TC 工作簿。"""
 
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ class OutputError(Exception):
     """输出文件写入错误。"""
 
 
-def _fallback_headers(kind: str) -> tuple[str, ...]:
-    return config.TC_FALLBACK_HEADERS if kind == "tc" else config.EPLAN_FALLBACK_HEADERS
+def _fallback_headers() -> tuple[str, ...]:
+    return config.TC_FALLBACK_HEADERS
 
 
-def _load_template(template_path: Path, kind: str) -> tuple[Any, Any, list[str]]:
+def _load_template(template_path: Path) -> tuple[Any, Any, list[str]]:
     unknown_headers: list[str] = []
     if template_path.exists():
         try:
@@ -46,22 +46,21 @@ def _load_template(template_path: Path, kind: str) -> tuple[Any, Any, list[str]]
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "Sheet1"
-    for col, header in enumerate(_fallback_headers(kind), start=1):
+    for col, header in enumerate(_fallback_headers(), start=1):
         worksheet.cell(row=1, column=col, value=header)
     return workbook, worksheet, unknown_headers
 
 
 def write_table(
     *,
-    kind: str,
     template_path: str | Path,
     output_path: str | Path,
     rows: Iterable[dict[str, Any]],
 ) -> list[str]:
-    """把 rows 写入模板，返回模板中未识别的表头（仅用于提示）。"""
+    """把 rows 写入 TC 模板，返回模板中未识别的表头（仅用于提示）。"""
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    workbook, worksheet, unknown_headers = _load_template(Path(template_path), kind)
+    workbook, worksheet, unknown_headers = _load_template(Path(template_path))
 
     try:
         # 输出模板只保留第 1 行表头：删除说明行/示例数据。
@@ -129,13 +128,14 @@ def make_output_paths(
         candidate = directory / name
         if not candidate.exists():
             return candidate
+        source = Path(name)
         for index in range(2, 1000):
-            candidate = directory / f"{Path(name).stem}_{index}.xlsx"
+            candidate = directory / f"{source.stem}_{index}{source.suffix}"
             if not candidate.exists():
                 return candidate
-        return directory / f"{Path(name).stem}_{os.getpid()}.xlsx"
+        return directory / f"{source.stem}_{os.getpid()}{source.suffix}"
 
     return {
         "tc": unique(f"TC_{base}.xlsx"),
-        "eplan": unique(f"EPlan_{base}.xlsx"),
+        "xml": unique(f"XML_{base}.xml"),
     }

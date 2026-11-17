@@ -4,18 +4,17 @@ import json
 import shutil
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 
 from datatrans import config
-from datatrans.job import run_job
 from datatrans.headers import canonical_output_header, normalize_header
+from datatrans.job import run_job
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / "data"
-# 测试用固定 3 行样本，避免需求方替换 data/ 下的真实样例后测试数字漂移。
-SAMPLE = ROOT / "backend" / "tests" / "fixtures" / "inputExample-total.xlsx"
+SAMPLE = ROOT / "backend" / "tests" / "fixtures" / "input_reference.xlsx"
 TEMPLATES = ROOT / "templates"
 
 
@@ -44,7 +43,7 @@ class BackendTestCase(unittest.TestCase):
             "templates_dir": str(TEMPLATES),
             "options": {
                 "export_tc": options.get("export_tc", True),
-                "export_eplan": options.get("export_eplan", True),
+                "export_xml": options.get("export_xml", False),
                 "on_invalid": options.get("on_invalid", "abort"),
             },
         }
@@ -59,18 +58,16 @@ class BackendTestCase(unittest.TestCase):
 
 
 class TestSampleOutput(BackendTestCase):
-    def test_sample_generates_expected_tc_and_eplan(self) -> None:
+    def test_hint_row_is_skipped(self) -> None:
         result = self.run_job_for([self.copy_sample()])
         self.assertEqual(result.status, "success")
-        self.assertTrue(result.ok)
-        self.assertTrue(Path(result.outputs["tc"]).exists())
-        self.assertTrue(Path(result.outputs["eplan"]).exists())
         self.assertEqual(result.stats["rows_read"], 3)
-        self.assertEqual(result.stats["tc_rows"], 3)
-        self.assertEqual(result.stats["eplan_rows"], 3)
+        self.assertIn("HINT_ROW_SKIPPED", [issue.code for issue in result.issues])
+        self.assertEqual([item.rows_valid for item in result.files], [3])
 
-    def test_tc_values_and_blank_erp(self) -> None:
+    def test_tc_output_mapping(self) -> None:
         result = self.run_job_for([self.copy_sample()])
+        self.assertTrue(Path(result.outputs["tc"]).exists())
         rows = self.load_rows(result.outputs["tc"])
         self.assertEqual(
             rows[0],
@@ -78,158 +75,131 @@ class TestSampleOutput(BackendTestCase):
         )
         self.assertEqual(
             rows[1],
-            [None, "SHSS SYSX-X3585-2", "角度传感器", None, "SYS-X3585-2", "上海圣色", 0.1, "成品", "电器外购件"],
+            [None, "国产.BLST-4.6-150", "扎带", "11111111", "BLST-4.6-150", "国产", 0.01, None, None],
         )
-        self.assertIsNone(rows[1][0])  # 是否合法不填
-        self.assertIsNone(rows[1][3])  # EPR/ERP 编码不填
-        self.assertEqual(rows[3][6], 115)
-        self.assertEqual(rows[1][8], "电器外购件")
-
-    def test_eplan_values_and_dimension_defaults(self) -> None:
-        result = self.run_job_for([self.copy_sample()])
-        rows = self.load_rows(result.outputs["eplan"])
         self.assertEqual(len(rows), 4)
-        self.assertEqual(len(rows[0]), 28)
-        self.assertEqual(rows[0][0], "部件编码")
-        self.assertEqual(rows[1][0], "SHSS SYSX-X3585-2")
-        self.assertEqual(rows[1][1], "角度传感器")
-        self.assertEqual(rows[1][2], "SYS-X3585-2")
-        self.assertEqual(rows[1][3], "件")
-        self.assertIsNone(rows[1][4])  # 价格不填
-        self.assertEqual(rows[1][5], "上海圣色")
-        self.assertEqual(rows[1][6], "上海圣色")
-        self.assertIsNone(rows[1][7])  # 描述不填
-        self.assertEqual(rows[1][8], "1:电气工程")
-        self.assertEqual(rows[1][11], "1:电气工程")
-        self.assertEqual(rows[1][18:21], [100, 53, 300])
-        # 第三行数据没有尺寸，默认 0
-        self.assertEqual(rows[3][18:21], [0, 0, 0])
-        for row in rows[1:]:
-            self.assertEqual(row[8], "1:电气工程")
-            self.assertEqual(row[11], "1:电气工程")
+        self.assertIsNone(rows[1][0])
+        self.assertIsNone(rows[1][7])
+        self.assertIsNone(rows[1][8])
 
-    def test_output_templates_keep_headers_and_remove_notes(self) -> None:
-        result = self.run_job_for([self.copy_sample()])
-        tc = load_workbook(result.outputs["tc"], data_only=True).active
-        self.assertEqual(tc.max_row, 4)
-        self.assertIsNone(tc["A11"].value)
-        self.assertEqual(tc["D1"].value, "EPR编码")
-        tc.parent.close()
+    def test_xml_output_mapping(self) -> None:
+        result = self.run_job_for(
+            [self.copy_sample()], export_tc=False, export_xml=True
+        )
+        self.assertEqual(result.status, "success")
+        self.assertIsNone(result.outputs["tc"])
+        self.assertEqual(result.stats["xml_rows"], 3)
+        root = ET.parse(result.outputs["xml"]).getroot()
+        self.assertEqual(root.tag, "partsmanagement")
+        self.assertEqual(root.get("count"), "3")
+        parts = root.findall("part")
+        self.assertEqual(len(parts), 3)
+        first = parts[0].attrib
+        self.assertEqual(first["P_ARTICLE_PARTTYPE"], "1")
+        self.assertEqual(first["P_ARTICLE_PARTNR"], "国产.BLST-4.6-150")
+        self.assertEqual(first["P_ARTICLE_TYPENR"], "BLST-4.6-150")
+        self.assertEqual(first["P_ARTICLE_ERPNR"], "11111111")
+        self.assertEqual(first["P_ARTICLE_DESCR1"], "??_??@扎带;")
+        self.assertTrue(first["P_ARTICLE_NOTE"].startswith("??_??@包塑型"))
+        self.assertEqual(first["P_ARTICLE_WEIGHT"], "0.01")
+        self.assertEqual(first["P_ARTICLE_WIDTH"], "4.6")
+        self.assertEqual(first["P_ARTICLE_HEIGHT"], "250")
+        self.assertEqual(first["P_ARTICLE_DEPTH"], "10")
+        self.assertEqual(first["P_ARTICLE_MOUNTINGSPACE"], "1150")
+        self.assertEqual(first["P_ARTICLE_MANUFACTURER"], "国产")
+        self.assertEqual(first["P_ARTICLE_SUPPLIER"], "国产")
+        self.assertEqual(first["P_ARTICLE_QUANTITYUNIT"], "??_??@条;")
+        self.assertEqual(first["P_ARTICLE_PRODUCTGROUP"], "0")
+        self.assertEqual(first["P_ARTICLE_PRODUCTSUBGROUP"], "0")
 
-        eplan = load_workbook(result.outputs["eplan"], data_only=True).active
-        self.assertEqual(eplan.max_row, 4)
-        self.assertEqual(eplan.max_column, 28)
-        eplan.parent.close()
+    def test_both_outputs(self) -> None:
+        result = self.run_job_for([self.copy_sample()], export_tc=True, export_xml=True)
+        self.assertEqual(result.status, "success")
+        self.assertEqual(result.stats["tc_rows"], 3)
+        self.assertEqual(result.stats["xml_rows"], 3)
+        self.assertTrue(Path(result.outputs["tc"]).exists())
+        self.assertTrue(Path(result.outputs["xml"]).exists())
+        payload = json.loads(Path(result.result_path).read_text(encoding="utf-8"))
+        self.assertEqual(payload["status"], "success")
 
     def test_log_and_result_json_exist(self) -> None:
         result = self.run_job_for([self.copy_sample()])
         self.assertTrue(Path(result.log_path).exists())
         self.assertTrue(Path(result.result_path).exists())
-        payload = json.loads(Path(result.result_path).read_text(encoding="utf-8"))
-        self.assertEqual(payload["status"], "success")
         log_text = Path(result.log_path).read_text(encoding="utf-8-sig")
         self.assertIn("任务开始", log_text)
         self.assertIn("TC 表写出完成", log_text)
 
 
 class TestValidation(BackendTestCase):
-    def test_missing_required_fields_abort(self) -> None:
+    def test_required_fields(self) -> None:
         path = self.copy_sample()
         workbook = load_workbook(path)
         worksheet = workbook.active
-        worksheet["L4"] = None  # 备注
-        worksheet["H5"] = None  # 代号
+        worksheet["B3"] = None
+        worksheet["D3"] = None
+        worksheet["E3"] = None
+        worksheet["F3"] = None
+        worksheet["G3"] = None
         workbook.save(path)
         workbook.close()
 
         result = self.run_job_for([path])
         self.assertEqual(result.status, "failed")
-        self.assertFalse(result.ok)
+        self.assertEqual(result.stats["rows_invalid"], 1)
+        self.assertEqual(
+            sum(1 for issue in result.issues if issue.code == "REQUIRED_FIELD_EMPTY"), 5
+        )
         self.assertIsNone(result.outputs["tc"])
-        self.assertIsNone(result.outputs["eplan"])
-        codes = [issue.code for issue in result.issues]
-        self.assertEqual(codes.count("REQUIRED_FIELD_EMPTY"), 2)
-        self.assertFalse(any(self.output_dir.glob("TC_*.xlsx")))
-        self.assertFalse(any(self.output_dir.glob("EPlan_*.xlsx")))
+        self.assertIsNone(result.outputs["xml"])
 
-    def test_missing_required_fields_skip(self) -> None:
+    def test_required_fields_skip_invalid(self) -> None:
         path = self.copy_sample()
         workbook = load_workbook(path)
         worksheet = workbook.active
-        worksheet["L4"] = None
-        worksheet["H5"] = None
+        worksheet["B3"] = None
         workbook.save(path)
         workbook.close()
 
         result = self.run_job_for([path], on_invalid="skip")
         self.assertEqual(result.status, "partial")
-        self.assertTrue(result.ok)
-        self.assertEqual(result.stats["rows_invalid"], 2)
+        self.assertEqual(result.stats["rows_invalid"], 1)
         rows = self.load_rows(result.outputs["tc"])
-        self.assertEqual(len(rows), 2)  # 表头 + 1 条合法行
-        self.assertEqual(rows[1][2], "举升电机")
+        self.assertEqual(len(rows), 3)  # 表头 + 2 条合法行
 
-    def test_unchecked_row_is_skipped_with_warning(self) -> None:
+    def test_negative_and_invalid_numbers(self) -> None:
         path = self.copy_sample()
         workbook = load_workbook(path)
         worksheet = workbook.active
-        worksheet["C4"] = None
-        worksheet["D4"] = None
+        worksheet["J3"] = -1
+        worksheet["K3"] = "abc"
         workbook.save(path)
         workbook.close()
 
         result = self.run_job_for([path])
-        self.assertEqual(result.status, "success")
-        self.assertEqual(result.stats["rows_unchecked"], 1)
-        self.assertIn("NO_EXPORT_TARGET", [issue.code for issue in result.issues])
-        rows = self.load_rows(result.outputs["tc"])
-        self.assertEqual(len(rows), 3)  # 表头 + 2 条勾选行
-
-    def test_note_row_is_skipped_without_validation_error(self) -> None:
-        path = self.copy_sample()
-        workbook = load_workbook(path)
-        worksheet = workbook.active
-        worksheet.merge_cells("A7:V7")
-        worksheet["A7"] = "注意：本表仅用于测试，以上数据请勿外传。"
-        workbook.save(path)
-        workbook.close()
-
-        result = self.run_job_for([path])
-        self.assertEqual(result.status, "success")
-        self.assertEqual(result.stats["rows_read"], 3)
-        self.assertIn("NOTE_ROW_SKIPPED", [issue.code for issue in result.issues])
-        self.assertNotIn("REQUIRED_FIELD_EMPTY", [issue.code for issue in result.issues])
-        rows = self.load_rows(result.outputs["tc"])
-        self.assertEqual(len(rows), 4)  # 表头 + 3 条数据
-
-    def test_note_word_in_remark_does_not_skip_valid_row(self) -> None:
-        path = self.copy_sample()
-        workbook = load_workbook(path)
-        worksheet = workbook.active
-        worksheet["L4"] = "注意安装方向"
-        workbook.save(path)
-        workbook.close()
-
-        result = self.run_job_for([path])
-        self.assertEqual(result.status, "success")
-        self.assertEqual(result.stats["rows_read"], 3)
-        self.assertNotIn("NOTE_ROW_SKIPPED", [issue.code for issue in result.issues])
-
-    def test_invalid_dimension_aborts_only_when_eplan_requested(self) -> None:
-        path = self.copy_sample()
-        workbook = load_workbook(path)
-        worksheet = workbook.active
-        worksheet["N4"] = "abc"
-        workbook.save(path)
-        workbook.close()
-
-        result = self.run_job_for([path], export_tc=True, export_eplan=False)
-        self.assertEqual(result.status, "success")
-        self.assertNotIn("INVALID_NUMBER", [issue.code for issue in result.issues])
-
-        result = self.run_job_for([path], export_tc=True, export_eplan=True)
         self.assertEqual(result.status, "failed")
-        self.assertIn("INVALID_NUMBER", [issue.code for issue in result.issues])
+        codes = [issue.code for issue in result.issues]
+        self.assertIn("NEGATIVE_NUMBER", codes)
+        self.assertIn("INVALID_NUMBER", codes)
+
+    def test_blank_numbers_default_zero(self) -> None:
+        path = self.copy_sample()
+        workbook = load_workbook(path)
+        worksheet = workbook.active
+        for cell in ("J3", "K3", "L3", "M3"):
+            worksheet[cell] = None
+        workbook.save(path)
+        workbook.close()
+
+        result = self.run_job_for([path], export_tc=False, export_xml=True)
+        self.assertEqual(result.status, "success")
+        root = ET.parse(result.outputs["xml"]).getroot()
+        first = root.find("part").attrib
+        self.assertEqual(first["P_ARTICLE_WEIGHT"], "0")
+        self.assertEqual(first["P_ARTICLE_WIDTH"], "0")
+        self.assertEqual(first["P_ARTICLE_HEIGHT"], "0")
+        self.assertEqual(first["P_ARTICLE_DEPTH"], "0")
+        self.assertEqual(first["P_ARTICLE_MOUNTINGSPACE"], "0")
 
     def test_only_xlsx_accepted(self) -> None:
         path = self.copy_sample("sample.xlsm")
@@ -238,11 +208,11 @@ class TestValidation(BackendTestCase):
         self.assertIn("UNSUPPORTED_EXTENSION", [issue.code for issue in result.issues])
 
     def test_missing_header_column(self) -> None:
-        path = self.input_dir / "no_remark.xlsx"
+        path = self.input_dir / "no_supplier.xlsx"
         workbook = Workbook()
         worksheet = workbook.active
-        worksheet.append(["名称", "代号", "部件编号", "EPLAN", "新TC"])
-        worksheet.append(["测试", "C001", "P001", "√", "√"])
+        worksheet.append(["部件编号", "类型编号", "名称1", "制造商"])
+        worksheet.append(["P001", "C001", "测试", "厂家"])
         workbook.save(path)
         workbook.close()
 
@@ -260,7 +230,6 @@ class TestMultiFile(BackendTestCase):
         self.assertEqual(result.stats["files"], 2)
         self.assertEqual(result.stats["rows_read"], 6)
         self.assertEqual(result.stats["tc_rows"], 6)
-        self.assertEqual(result.stats["eplan_rows"], 6)
         self.assertEqual(
             sum(1 for issue in result.issues if issue.code == "DUPLICATE_ROW"), 3
         )
@@ -270,17 +239,15 @@ class TestMultiFile(BackendTestCase):
 
 class TestHeaderHelpers(unittest.TestCase):
     def test_normalize_aliases(self) -> None:
-        self.assertEqual(normalize_header("部件编号（厂家代号）"), "部件编号")
+        self.assertEqual(normalize_header("类型编号"), "类型编号")
+        self.assertEqual(normalize_header("名称1"), "名称1")
         self.assertEqual(normalize_header("重量（kg）"), "重量")
-        self.assertEqual(normalize_header("额定电压（或工作电压范围）"), "额定电压")
-        self.assertEqual(normalize_header("EPLan（√）"), "EPLAN")
-        self.assertEqual(normalize_header("备注 (厂家)"), "备注")
+        self.assertEqual(normalize_header("宽度"), "宽度")
 
     def test_output_alias_keeps_epr(self) -> None:
         self.assertEqual(canonical_output_header("EPR编码"), "ERP编码")
         self.assertEqual(canonical_output_header("ERP编码"), "ERP编码")
-        self.assertEqual(canonical_output_header("行业/子行业"), "行业/子行业")
-        self.assertEqual(canonical_output_header("宽度"), "宽度")
+        self.assertEqual(canonical_output_header("制造商"), "制造商")
 
 
 if __name__ == "__main__":

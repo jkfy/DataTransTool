@@ -22,8 +22,7 @@ def normalize_header(value: Any) -> str:
     例如：
       部件编号（厂家代号） -> 部件编号
       重量（kg）           -> 重量
-      额定电压（或工作电压范围） -> 额定电压
-      EPlan（√）           -> EPLAN
+      ERP编号             -> ERP编号
     """
     if value is None:
         return ""

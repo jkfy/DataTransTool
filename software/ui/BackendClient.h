@@ -23,7 +23,7 @@ public:
     bool startJob(const QStringList &inputs,
                   const QString &outputDir,
                   bool exportTc,
-                  bool exportEplan,
+                  bool exportXml,
                   bool skipInvalid,
                   const QString &engine = QStringLiteral("auto"));
     void cancel();
@@ -51,7 +51,7 @@ private:
     bool prepareJobFile(const QStringList &inputs,
                         const QString &outputDir,
                         bool exportTc,
-                        bool exportEplan,
+                        bool exportXml,
                         bool skipInvalid,
                         const QString &engine);
     QString resolveProgram(QStringList &arguments, QString &workingDirectory, QString &error) const;

@@ -226,7 +226,6 @@ def _header_values(raw: Any, cols: int) -> list[Any]:
 
 def write_table_with_excel(
     *,
-    kind: str,
     template_path: str | Path,
     output_path: str | Path,
     rows: Any,

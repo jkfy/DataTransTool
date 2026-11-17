@@ -1,6 +1,6 @@
-# DataTransTool — TC 一键式导入工具
+# DataTransTool — TC / EPLAN 物料导入工具
 
-把物料总表（`.xlsx`）按固定模板转换成 **TC 表** 和 **Eplan 表** 的桌面小工具。
+把物料总表（`.xlsx`）按固定模板转换成 **TC 表** 和 **EPLAN 部件 XML** 的桌面小工具。
 
 - 前端：Qt 6 / C++（Widgets）
 - 后端：Python 3 + openpyxl（可选本机 Excel COM 兼容加密文件），以独立 CLI 进程运行
@@ -12,10 +12,13 @@
 已完成可运行版本，包含：
 
 - 多文件选择（列表顺序合并）、拖拽添加；
-- 表头自动识别（适配 `inputExample-total.xlsx` 的合并表头布局）；
-- 必填项校验（代号、部件编号、备注）；
-- `EPLAN` / `新TC` 勾选决定进入哪张输出表；
-- TC / Eplan 固定模板输出；
+- 按 `templates/input_reference.xlsx` 的新布局识别表头；
+- 第一行表头、第二行提示内容自动跳过；
+- 必填校验：部件编号、类型编号、名称1、制造商、供应商；
+- 重量/宽度/高度/深度：空按 0，负数和非数字报错；
+- 是否导出 **只看界面勾选**：`生成 TC 表`、`生成 XML 表`，不再读取输入表的 `EPLAN` / `新TC` 列；
+- TC 固定模板输出；EPLAN XML 固定模板输出；
+- 不再生成 Eplan Excel 表；
 - 文本日志 + `result.json` + 界面进度/错误提示；
 - **加密文件兼容**：openpyxl 读取失败时自动改用本机 Excel COM（pywin32）；
 - 默认“有错误整批不导出”，可勾选“跳过错误行继续导出”；
@@ -35,8 +38,9 @@ DataTransTool/
       headers.py           # 表头识别与别名归一化
       reader.py            # 读取 .xlsx
       validator.py         # 字段解析与校验
-      mapper.py            # 记录 -> TC/Eplan 行
-      writer.py            # 按模板写出
+      mapper.py            # 记录 -> TC / XML
+      writer.py            # 按 TC 模板写出
+      xml_writer.py        # 按 XML 模板写出
       report.py            # 文本日志 / result.json
       job.py               # 任务编排
     tests/                 # unittest 测试
@@ -52,11 +56,11 @@ DataTransTool/
     tests/                 # QProcess / UI 冒烟测试
   icons/                   # 应用图标
     transIcon.png
-  templates/               # 固定输出模板
-    output_TC.xlsx
-    output_Eplan.xlsx
-    input_reference.xlsx   # 输入格式参考，不参与运行
-  data/                    # 需求方给的样例
+  templates/               # 固定模板
+    input_reference.xlsx   # 输入模板（第一行表头，第二行提示）
+    output_TC.xlsx         # TC 输出模板
+    output_Eplan.xml       # EPLAN 部件管理 XML 输出模板
+  data/                    # 样例数据
   packaging/
     build.ps1              # 一键构建 + 打包
     README_offline.txt     # 随包说明
@@ -72,51 +76,78 @@ DataTransTool/
 
 ## 输入格式
 
-按 `data/inputExample-total.xlsx` 的布局解析：
+按 `templates/input_reference.xlsx` 的布局解析：
 
 - 只接收 **`.xlsx`**；`.xls`、`.xlsm` 会被拒绝。
-- 第 2–3 行是表头（含合并单元格），数据从第 4 行开始。
+- 第一行是表头，第二行是模板提示内容（自动跳过），从第三行开始是正式数据。
 - 程序不写死行号：会在前 20 行里找命中列名最多的一行，并兼容“组表头 + 子表头”的两行布局。
-- 必需的列：`代号`、`部件编号（厂家代号）`、`备注`、`名称`、`EPLAN`、`新TC`。
+- 必需的列：`部件编号`、`类型编号`、`名称1`、`制造商`、`供应商`。
 - 其他列缺失时使用默认值或留空，并在日志里给出警告。
 
-### 勾选规则
+### 数值规则
 
-- `EPLAN` 为 `√`/`是`/`Y`/`1`/`X` → 进入 Eplan 表；
-- `新TC` 为 `√`/`是`/`Y`/`1`/`X` → 进入 TC 表；
-- 两列都为空/`×`/`否` → 该行跳过，并写一条警告；
-- 两列都勾选 → 同时进入两张表。
+- `重量`、`宽度`、`高度`、`深度` 空值按 `0` 处理；
+- 出现负数或非数字时该行校验失败；
+- 默认“有错误整批不导出”，勾选“跳过错误行继续导出”后只导出合法行。
 
 ## 转换规则
 
-| 物料总表 | TC 表 | Eplan 表 |
+| 物料总表 | TC 表 | EPLAN XML |
 |---|---|---|
-| 物料类型（空 → 电器外购件） | 采购类型 | |
-| 名称 | 名称1 | 名称 |
-| 代号 | 类型编码 | 规格型号 |
-| 材质（空 → 成品） | 材料 | |
-| 部件编号（厂家代号） | 部件编码 | 部件编码 |
-| 备注 | 制造商 | 生产商、供应商 |
-| 重量（kg） | 重量 | |
-| 宽 / 高 / 深（空 → 0） | | 宽度 / 高度 / 深度 |
-| | ERP/EPR 编码：**留空** | |
-| | 是否合法：**留空** | |
-| | | 单位：件 |
-| | | 价格：留空 |
-| | | 一类产品：`1:电气工程` |
-| | | 行业/子行业：`1:电气工程` |
-| | | 描述及其他未提到字段：留空 |
+| 部件编号 | 部件编码 | `P_ARTICLE_PARTNR` |
+| ERP编码 | ERP编码 | `P_ARTICLE_ERPNR` |
+| 类型编号 | 类型编码 | `P_ARTICLE_TYPENR` |
+| 名称1 | 名称1 | `P_ARTICLE_DESCR1` |
+| 制造商 | 制造商 | `P_ARTICLE_MANUFACTURER` |
+| 供应商 | 制造商（代码中优先用制造商） | `P_ARTICLE_SUPPLIER` |
+| 描述 | | `P_ARTICLE_NOTE` |
+| 数量单位 | | `P_ARTICLE_QUANTITYUNIT` |
+| 重量 | 重量 | `P_ARTICLE_WEIGHT` |
+| 宽度 | | `P_ARTICLE_WIDTH` |
+| 高度 | | `P_ARTICLE_HEIGHT` |
+| 深度 | | `P_ARTICLE_DEPTH` |
+| 序号 | | |
+| | 是否合法：留空 | `P_ARTICLE_PARTTYPE=1` |
+| | 材料：留空 | `P_ARTICLE_PRODUCTGROUP=0` |
+| | 采购类型：留空 | `P_ARTICLE_PRODUCTSUBGROUP=0` |
+| | | `P_ARTICLE_MOUNTINGSPACE=宽度 × 高度` |
 
-> TC 模板表头原文是 `EPR编码`。程序保留模板表头，不修改拼写；该列值留空。
+> TC 模板表头原文是 `EPR编码`（设计文档写 `ERP编码`）。程序保留模板表头，不修改拼写，但该列现在会填入输入表的 ERP 编码。
 
 ## 输出
 
-输出到界面选择的目录：
+输出到界面选择的目录，是否生成只看界面勾选：
 
-- `TC_YYYYMMDD_HHMMSS_xxxxxx.xlsx`
-- `EPlan_YYYYMMDD_HHMMSS_xxxxxx.xlsx`
+- `TC_YYYYMMDD_HHMMSS_xxxxxx.xlsx`（勾选“生成 TC 表”时）
+- `XML_YYYYMMDD_HHMMSS_xxxxxx.xml`（勾选“生成 XML 表”时）
 - `import_YYYYMMDD_HHMMSS_xxxxxx.log`（UTF-8 with BOM，Windows 记事本可直接看）
 - `result.json`（结构化结果，供界面显示/排错）
+
+### XML 导出
+
+XML 按 `templates/output_Eplan.xml` 生成，是 **EPLAN 部件管理** 格式，和 TC 表相互独立：
+
+| XML 属性 | 来源 |
+|---|---|
+| `P_ARTICLE_PARTTYPE` | 固定 `1` |
+| `P_ARTICLE_PARTNR` | 部件编号 |
+| `P_ARTICLE_TYPENR` | 类型编号 |
+| `P_ARTICLE_ERPNR` | ERP编码 |
+| `P_ARTICLE_DESCR1` | 名称1，写成 `??_??@名称;` |
+| `P_ARTICLE_NOTE` | 描述，写成 `??_??@描述;` |
+| `P_ARTICLE_WEIGHT` | 重量，空按 0 |
+| `P_ARTICLE_WIDTH/HEIGHT/DEPTH` | 宽/高/深，空按 0 |
+| `P_ARTICLE_MOUNTINGSPACE` | 宽 × 高 |
+| `P_ARTICLE_MANUFACTURER` | 制造商 |
+| `P_ARTICLE_SUPPLIER` | 供应商 |
+| `P_ARTICLE_QUANTITYUNIT` | 数量单位，空按“件”，写成 `??_??@单位;` |
+| `P_ARTICLE_PRODUCTGROUP` | 固定 `0` |
+| `P_ARTICLE_PRODUCTSUBGROUP` | 固定 `0` |
+
+- XML 包含**所有校验通过的行**；
+- 根节点沿用模板的 `length-unit`、`weight-unit`、`type`、`build`、`database` 等属性，只更新 `count`；
+- `??_??@...;` 是模板使用的 EPLAN 多语言文本格式；
+- 不需要 XML 时，保持界面“生成 XML 表”不勾选即可。
 
 ## 加密文件 / Excel COM 兼容模式
 
@@ -305,10 +336,13 @@ $env:DATATRANS_NO_DIALOGS = "1"
 
 ## 已知限制 / 约定
 
-- 只支持 `inputExample-total.xlsx` 这一种输入布局；`物料编码申请单数据总模板.xlsx` 的额外列（标准管理员、ERP编码、单位重量、截面积等）未纳入映射。
+- 只支持 `templates/input_reference.xlsx` 这一种输入布局；第一行表头，第二行提示内容跳过。
 - 只接收 `.xlsx`，不接收 `.xls` / `.xlsm`。
-- TC 的 `EPR编码`、`是否合法` 留空；Eplan 的 `描述`、`价格` 及其他未提到字段留空。
-- 多文件按列表顺序合并；重复的“代号 + 部件编号”只写警告，不自动去重。
+- 是否导出只看界面勾选 `生成 TC 表` / `生成 XML 表`；输入表不再需要 `EPLAN`、`新TC` 列。
+- TC 的 `是否合法`、`材料`、`采购类型` 留空。
+- XML 的 `P_ARTICLE_ERPNR` 来自 ERP编码、`P_ARTICLE_NOTE` 来自描述；`P_ARTICLE_QUANTITYUNIT` 来自数量单位（空按“件”）。
+- XML 包含所有合法数据行；根节点只更新 `count`，其余属性沿用 `output_Eplan.xml`。
+- 多文件按列表顺序合并；重复的“类型编号 + 部件编号”只写警告，不自动去重。
 - 默认“有错误整批不导出”；需要部分导出时勾选“跳过错误行继续导出”。
 - 不做界面内预览/编辑；输出后可在 Excel 中检查。
 - 表头识别是“按列名”而不是按固定列号，模板列顺序调整通常仍可用；但如果列名大改，需要更新 `backend/datatrans/config.py` 的别名表。

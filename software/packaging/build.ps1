@@ -28,6 +28,7 @@ $distDir = Join-Path $root "dist"
 $venvDir = Join-Path $buildDir "venv"
 $backendDist = Join-Path $distDir "pyinstaller"
 $appDir = Join-Path $distDir "DataTransTool"
+$cleanTemplatesDir = Join-Path $buildDir "templates-clean"
 $version = "0.1.0"
 
 function Write-Step([string]$Message) {
@@ -77,6 +78,23 @@ function Stop-RunningTargetProcesses {
     Start-Sleep -Milliseconds 500
 }
 
+function Reset-CleanTemplates {
+    # 排除 Excel 打开模板时产生的 ~$ 锁文件，否则 PyInstaller/Compress-Archive 会读锁失败。
+    if (Test-Path $cleanTemplatesDir) {
+        Remove-Item -Recurse -Force $cleanTemplatesDir
+    }
+    New-Item -ItemType Directory -Path $cleanTemplatesDir -Force | Out-Null
+    $allowedTemplates = @('input_reference.xlsx', 'output_TC.xlsx', 'output_Eplan.xml')
+    Get-ChildItem -Path $templatesDir -File |
+        Where-Object { $_.Name -in $allowedTemplates } |
+        Copy-Item -Destination $cleanTemplatesDir -Force
+    foreach ($required in @('output_TC.xlsx', 'output_Eplan.xml')) {
+        if (-not (Test-Path (Join-Path $cleanTemplatesDir $required))) {
+            throw "模板目录缺少 $required：$templatesDir"
+        }
+    }
+}
+
 $QtDir = Resolve-RequiredPath $QtDir "Qt 目录"
 $MinGWDir = Resolve-RequiredPath $MinGWDir "MinGW 目录"
 $templatesDir = Resolve-RequiredPath $templatesDir "模板目录"
@@ -98,6 +116,7 @@ if (-not $SkipBackend) {
     $venvPython = Join-Path $venvDir "Scripts\python.exe"
     & $venvPython -m pip install --disable-pip-version-check --upgrade pip
     & $venvPython -m pip install --disable-pip-version-check -r (Join-Path $backendDir "requirements-build.txt")
+    Reset-CleanTemplates
 
     Write-Step "使用 PyInstaller 打包 Python 后端"
     $pyinstallerDist = Join-Path $backendDist "datatrans-core"
@@ -113,7 +132,7 @@ if (-not $SkipBackend) {
         --hidden-import win32com.client `
         --hidden-import pythoncom `
         --hidden-import pywintypes `
-        --add-data "$templatesDir;templates" `
+        --add-data "$cleanTemplatesDir;templates" `
         --distpath $backendDist `
         --workpath (Join-Path $buildDir "pyinstaller") `
         --specpath $buildDir `
@@ -169,7 +188,9 @@ if (-not (Test-Path $backendSource)) {
 Copy-Item (Join-Path $backendSource "*") $appBackend -Recurse -Force
 
 $appTemplates = Join-Path $appDir "templates"
-Copy-Item $templatesDir $appTemplates -Recurse -Force
+Reset-CleanTemplates
+New-Item -ItemType Directory -Path $appTemplates -Force | Out-Null
+Copy-Item (Join-Path $cleanTemplatesDir "*") $appTemplates -Force
 Copy-Item (Join-Path $PSScriptRoot "README_offline.txt") (Join-Path $appDir "README.txt") -Force
 Copy-Item (Join-Path $PSScriptRoot "THIRD_PARTY_NOTICES.txt") (Join-Path $appDir "THIRD_PARTY_NOTICES.txt") -Force
 

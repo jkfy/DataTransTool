@@ -4,7 +4,8 @@
 
 1. 把整个 `DataTransTool` 文件夹解压到本机任意目录（路径建议不要含特殊字符）。
 2. 双击 `DataTransTool.exe`。
-3. 添加一个或多个 `.xlsx` 物料总表，选择输出目录，点击“开始处理”。
+3. 添加一个或多个 `.xlsx` 物料总表，选择输出目录，按需勾选
+   “生成 TC 表 / 生成 XML 表”，点击“开始处理”。
 
 不需要安装 Python、Qt 或联网。`backend\datatrans-core.exe` 是随包携带的 Python 后端，
 `templates\` 是固定输出模板，请勿删除或改名。
@@ -12,7 +13,7 @@
 
 ## 加密文件
 
-如果内网电脑对 `.xlsx` 做了透明加密，程序会自动切换到本机 Excel 读取/写出：
+如果内网电脑对 `.xlsx` 做了透明加密，程序会自动切换到本机 Excel 读取，TC 表也由 Excel 写出：
 
 - 需要本机安装 Microsoft Excel，且 Excel 本身能正常打开该文件；
 - 首次调用 Excel 可能较慢（Excel 冷启动/杀毒扫描）；
@@ -20,13 +21,16 @@
 - 若提示“受密码/IRM 保护的 OLE 格式”，请提供密码后另存，或让管理员导出为未加密 `.xlsx`；
 - 若 Excel 弹出密码/权限对话框，程序无法自动处理，请先手动打开确认权限。
 
-##信息有效性
--为匹配原excel格式，将最后一行含有“注意”的单元格进行特殊处理：如果单元格有“注意”并且该单元格的必填字段都为空，则认为是表格最后一行
+## 输入格式
+
+- 第一行是表头，第二行是提示内容（不导出），从第三行开始是数据；
+- 必填：部件编号、类型编号、名称1、制造商、供应商；
+- 重量、宽度、高度、深度为空按 0，负数/非数字报错。
 
 ## 输出
 
-- `TC_YYYYMMDD_HHMMSS_xxxxxx.xlsx`
-- `EPlan_YYYYMMDD_HHMMSS_xxxxxx.xlsx`
+- `TC_YYYYMMDD_HHMMSS_xxxxxx.xlsx`（勾选“生成 TC 表”时）
+- `XML_YYYYMMDD_HHMMSS_xxxxxx.xml`（勾选“生成 XML 表”时）
 - `import_YYYYMMDD_HHMMSS_xxxxxx.log`（校验/处理日志）
 - `result.json`（结构化结果，供界面显示）
 

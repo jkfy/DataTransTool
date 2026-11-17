@@ -5,5 +5,6 @@
         <file alias="icons/removeFile.png">../icons/removeFile.png</file>
         <file alias="icons/openFile.png">../icons/openFile.png</file>
         <file alias="icons/cleanList.png">../icons/cleanList.png</file>
+        <file alias="icons/logo.png">../icons/logo.png</file>
     </qresource>
 </RCC>

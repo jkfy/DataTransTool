@@ -93,7 +93,7 @@ def _issue(
 
 
 def _is_note_row(grid: Any, row_idx: int, values: dict[str, Any]) -> bool:
-    """表格末尾的“注意”说明行：缺少代号/部件编号，但某个单元格含“注意”。
+    """表格末尾的“注意”说明行：缺少类型编号/部件编号，但某个单元格含“注意”。
 
     要求核心字段至少缺一个，避免把备注里写了“注意安装方向”的正常物料行误删。
     """
@@ -129,7 +129,7 @@ def read_grid(
     header = find_input_header(grid)
     if header is None:
         raise InputError(
-            "找不到表头行。请确认输入模板包含“代号、部件编号、备注、名称、EPLAN、新TC”等列。"
+            "找不到表头行。请确认输入模板包含“部件编号、类型编号、名称1、制造商、供应商”等列。"
         )
     result.header = header
 
@@ -152,9 +152,10 @@ def read_grid(
         )
 
     optional_defaults = {
-        "物料类型": config.DEFAULT_MATERIAL_TYPE,
-        "材质": config.DEFAULT_MATERIAL,
-        "重量": "留空",
+        "ERP编码": "留空",
+        "描述": "留空",
+        "数量单位": config.DEFAULT_UNIT,
+        "重量": "0",
         "宽": "0",
         "高": "0",
         "深": "0",
@@ -179,6 +180,23 @@ def read_grid(
         for canonical, col_idx in header.columns.items():
             values[canonical] = grid.cell(row=row_idx, column=col_idx).value
         if all(_is_blank(value) for value in values.values()):
+            continue
+        # 新模板第 2 行是提示内容（通常没有序号），跳过，不算数据。
+        if (
+            row_idx == header.data_start_row
+            and "序号" in header.columns
+            and _is_blank(values.get("序号"))
+        ):
+            result.issues.append(
+                _issue(
+                    "info",
+                    "HINT_ROW_SKIPPED",
+                    f"第 {row_idx} 行是模板提示内容，已跳过",
+                    file_text,
+                    sheet_title,
+                    row_idx,
+                )
+            )
             continue
         if _is_note_row(grid, row_idx, values):
             result.issues.append(

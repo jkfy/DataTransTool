@@ -27,13 +27,14 @@
 双击 DataTransTool.exe
 添加 .xlsx 物料总表
 选择输出目录
+按需勾选“生成 TC 表 / 生成 XML 表”
 点击“开始处理”
 ```
 
-输出：`TC_*.xlsx`、`EPlan_*.xlsx`、`import_*.log`、`result.json`。
+输出：`TC_*.xlsx`（勾选 TC 时）、`XML_*.xml`（勾选 XML 时）、`import_*.log`、`result.json`。
 
-如果输入文件被内网透明加密，程序会自动改用本机 Excel COM 读取/写出；这需要目标机安装
-Microsoft Excel，且 Excel 本身有权限打开该文件。程序不会绕过密码/IRM/权限。
+如果输入文件被内网透明加密，程序会自动改用本机 Excel COM 读取，TC 表也由 Excel 写出；
+这需要目标机安装 Microsoft Excel，且 Excel 本身有权限打开该文件。程序不会绕过密码/IRM/权限。
 
 ## 在 software 目录内重新构建
 

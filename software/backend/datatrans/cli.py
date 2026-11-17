@@ -20,7 +20,7 @@ def _print_json(payload: dict[str, Any]) -> None:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="datatrans-core",
-        description="DataTransTool Python 后端：物料总表 -> TC / Eplan",
+        description="DataTransTool Python 后端：物料总表 -> TC / EPLAN XML",
     )
     parser.add_argument("--job", help="job.json 路径；提供后其余输入参数可省略")
     parser.add_argument("--input", action="append", default=[], help="输入 .xlsx，可重复")
@@ -34,8 +34,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--tc", dest="export_tc", action="store_true", default=None)
     parser.add_argument("--no-tc", dest="export_tc", action="store_false")
-    parser.add_argument("--eplan", dest="export_eplan", action="store_true", default=None)
-    parser.add_argument("--no-eplan", dest="export_eplan", action="store_false")
+    parser.add_argument("--xml", dest="export_xml", action="store_true", default=None,
+                        help="生成 EPLAN 部件 XML")
+    parser.add_argument("--no-xml", dest="export_xml", action="store_false")
     parser.add_argument("--skip-invalid", action="store_true", help="跳过错误行继续导出")
     parser.add_argument("--abort-on-invalid", action="store_true", help="有错误时整批不导出")
     parser.add_argument("--progress", action="store_true", help="stdout 输出 JSONL 进度")
@@ -76,8 +77,8 @@ def main(argv: list[str] | None = None) -> int:
             payload.setdefault("options", {})["engine"] = args.engine
         if args.export_tc is not None:
             payload.setdefault("options", {})["export_tc"] = args.export_tc
-        if args.export_eplan is not None:
-            payload.setdefault("options", {})["export_eplan"] = args.export_eplan
+        if args.export_xml is not None:
+            payload.setdefault("options", {})["export_xml"] = args.export_xml
         if args.skip_invalid:
             payload.setdefault("options", {})["on_invalid"] = "skip"
         if args.abort_on_invalid:

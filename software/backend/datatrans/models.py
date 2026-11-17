@@ -43,28 +43,20 @@ class Issue:
 
 @dataclass(slots=True)
 class MaterialRecord:
-    # 规范字段
-    material_type: str = ""
-    applicant: str = ""
-    eplan: bool = False
-    new_tc: bool = False
-    material_code: str = ""
-    long_description: str = ""
-    name: str = ""
-    code: str = ""
-    spec: str = ""
-    material: str = ""
+    # 规范字段（对应 input_reference.xlsx 的列）
+    serial: str = ""
     part_no: str = ""
-    remark: str = ""
+    erp_code: str = ""
+    code: str = ""
+    name: str = ""
+    manufacturer: str = ""
+    supplier: str = ""
+    description: str = ""
+    quantity_unit: str = ""
     weight: float | None = None
     width: float | None = None
     height: float | None = None
     depth: float | None = None
-    voltage: str = ""
-    power: str = ""
-    description: str = ""
-    outer_diameter: str = ""
-    core_count: str = ""
 
     # 来源信息
     source_file: str = ""
@@ -75,27 +67,19 @@ class MaterialRecord:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "material_type": self.material_type,
-            "applicant": self.applicant,
-            "eplan": self.eplan,
-            "new_tc": self.new_tc,
-            "material_code": self.material_code,
-            "long_description": self.long_description,
-            "name": self.name,
-            "code": self.code,
-            "spec": self.spec,
-            "material": self.material,
+            "serial": self.serial,
             "part_no": self.part_no,
-            "remark": self.remark,
+            "erp_code": self.erp_code,
+            "code": self.code,
+            "name": self.name,
+            "manufacturer": self.manufacturer,
+            "supplier": self.supplier,
+            "description": self.description,
+            "quantity_unit": self.quantity_unit,
             "weight": self.weight,
             "width": self.width,
             "height": self.height,
             "depth": self.depth,
-            "voltage": self.voltage,
-            "power": self.power,
-            "description": self.description,
-            "outer_diameter": self.outer_diameter,
-            "core_count": self.core_count,
             "source_file": self.source_file,
             "source_sheet": self.source_sheet,
             "source_row": self.source_row,
@@ -129,7 +113,7 @@ class FileSummary:
 class JobOptions:
     output_dir: str
     export_tc: bool = True
-    export_eplan: bool = True
+    export_xml: bool = False
     on_invalid: str = "abort"  # abort / skip
     engine: str = "auto"  # auto / openpyxl / excel
     sheet_name: str | None = None

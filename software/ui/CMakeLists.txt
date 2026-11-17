@@ -28,10 +28,16 @@ if (MSVC)
 endif()
 
 # 开发时把模板复制到可执行文件旁边，方便直接运行 build 目录里的 exe。
+# 只复制实际用到的文件，避免 Excel 打开模板时产生的 ~$ 临时文件导致 copy_directory 失败。
 add_custom_command(TARGET DataTransTool POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/../templates"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
         "$<TARGET_FILE_DIR:DataTransTool>/templates"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/../templates/output_TC.xlsx"
+        "$<TARGET_FILE_DIR:DataTransTool>/templates/output_TC.xlsx"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/../templates/output_Eplan.xml"
+        "$<TARGET_FILE_DIR:DataTransTool>/templates/output_Eplan.xml"
     COMMENT "Copying templates next to DataTransTool.exe"
 )
 

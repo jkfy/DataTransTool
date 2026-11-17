@@ -40,7 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
 
     ui->tcCheck->setChecked(m_settings.value(QStringLiteral("exportTc"), true).toBool());
-    ui->eplanCheck->setChecked(m_settings.value(QStringLiteral("exportEplan"), true).toBool());
+    ui->xmlCheck->setChecked(m_settings.value(QStringLiteral("exportXml"), false).toBool());
     ui->skipInvalidCheck->setChecked(
         m_settings.value(QStringLiteral("skipInvalid"), false).toBool());
 
@@ -178,10 +178,10 @@ void MainWindow::startProcessing()
         return;
     }
 
-    if (!ui->tcCheck->isChecked() && !ui->eplanCheck->isChecked()) {
+    if (!ui->tcCheck->isChecked() && !ui->xmlCheck->isChecked()) {
         if (!quietMode()) {
             QMessageBox::warning(this, QStringLiteral("没有输出"),
-                                 QStringLiteral("请至少勾选一种输出表（TC 或 Eplan）。"));
+                                 QStringLiteral("请至少勾选一种输出文件（TC 或 XML）。"));
         }
         return;
     }
@@ -204,7 +204,7 @@ void MainWindow::startProcessing()
 
     m_settings.setValue(QStringLiteral("lastOutputDir"), directory);
     m_settings.setValue(QStringLiteral("exportTc"), ui->tcCheck->isChecked());
-    m_settings.setValue(QStringLiteral("exportEplan"), ui->eplanCheck->isChecked());
+    m_settings.setValue(QStringLiteral("exportXml"), ui->xmlCheck->isChecked());
     m_settings.setValue(QStringLiteral("skipInvalid"), ui->skipInvalidCheck->isChecked());
     m_settings.setValue(QStringLiteral("engineIndex"), ui->engineCombo->currentIndex());
 
@@ -219,8 +219,8 @@ void MainWindow::startProcessing()
     statusBar()->showMessage(QStringLiteral("正在启动后端…"));
 
     if (!m_backend->startJob(files, directory, ui->tcCheck->isChecked(),
-                             ui->eplanCheck->isChecked(), ui->skipInvalidCheck->isChecked(),
-                             engineMode())) {
+                             ui->xmlCheck->isChecked(),
+                             ui->skipInvalidCheck->isChecked(), engineMode())) {
         // startJob 失败时已经通过 failed 信号给出提示，这里只恢复界面状态。
         if (!m_backend->isRunning()) {
             setBusy(false);
@@ -359,7 +359,7 @@ void MainWindow::setBusy(bool busy)
                             static_cast<QWidget *>(ui->outputEdit),
                             static_cast<QWidget *>(ui->fileList),
                             static_cast<QWidget *>(ui->tcCheck),
-                            static_cast<QWidget *>(ui->eplanCheck),
+                            static_cast<QWidget *>(ui->xmlCheck),
                             static_cast<QWidget *>(ui->skipInvalidCheck),
                             static_cast<QWidget *>(ui->engineCombo)}) {
         widget->setEnabled(!busy);

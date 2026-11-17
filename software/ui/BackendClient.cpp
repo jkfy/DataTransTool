@@ -45,7 +45,7 @@ bool BackendClient::isRunning() const
 bool BackendClient::prepareJobFile(const QStringList &inputs,
                                    const QString &outputDir,
                                    bool exportTc,
-                                   bool exportEplan,
+                                   bool exportXml,
                                    bool skipInvalid,
                                    const QString &engine)
 {
@@ -70,7 +70,7 @@ bool BackendClient::prepareJobFile(const QStringList &inputs,
 
     QJsonObject options;
     options.insert(QStringLiteral("export_tc"), exportTc);
-    options.insert(QStringLiteral("export_eplan"), exportEplan);
+    options.insert(QStringLiteral("export_xml"), exportXml);
     options.insert(QStringLiteral("on_invalid"), skipInvalid ? QStringLiteral("skip")
                                                              : QStringLiteral("abort"));
     options.insert(QStringLiteral("engine"),
@@ -146,7 +146,7 @@ QString BackendClient::resolveProgram(QStringList &arguments,
 bool BackendClient::startJob(const QStringList &inputs,
                              const QString &outputDir,
                              bool exportTc,
-                             bool exportEplan,
+                             bool exportXml,
                              bool skipInvalid,
                              const QString &engine)
 {
@@ -160,7 +160,8 @@ bool BackendClient::startJob(const QStringList &inputs,
     }
 
     resetJobFile();
-    if (!prepareJobFile(inputs, outputDir, exportTc, exportEplan, skipInvalid, engine)) {
+    if (!prepareJobFile(inputs, outputDir, exportTc, exportXml,
+                        skipInvalid, engine)) {
         return false;
     }
 
@@ -327,7 +328,7 @@ void BackendClient::onProcessFinished(int exitCode, QProcess::ExitStatus exitSta
 
         QStringList outputs;
         const QJsonObject outputObject = m_resultObject.value(QStringLiteral("outputs")).toObject();
-        for (const QString &key : {QStringLiteral("tc"), QStringLiteral("eplan")}) {
+        for (const QString &key : {QStringLiteral("tc"), QStringLiteral("xml")}) {
             const QString path = outputObject.value(key).toString();
             if (!path.isEmpty()) {
                 outputs << path;
