@@ -24,7 +24,7 @@ def _xml_number(value: float | None) -> str:
 
 
 def map_tc(record: MaterialRecord) -> dict[str, Any]:
-    """按最新设计 1.2 生成 TC 行；未提到的字段留空。"""
+    """按最新设计 1.2 生成 TC 行；未提到的字段留空。材料、采购类型固定填默认值"""
     return {
         "是否合法": None,
         "部件编码": record.part_no,
@@ -33,8 +33,8 @@ def map_tc(record: MaterialRecord) -> dict[str, Any]:
         "类型编码": record.code,
         "制造商": record.manufacturer or record.supplier,
         "重量": record.weight,
-        "材料": None,
-        "采购类型": None,
+        "材料": config.DEFAULT_MATERIAL,
+        "采购类型": config.DEFAULT_MATERIAL_TYPE,
     }
 
 

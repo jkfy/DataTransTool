@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>TC 元件库智能运维系统</string>
+   <string>太重TC元件库智能运维系统</string>
   </property>
   <property name="windowIcon">
    <iconset resource="app.qrc">
@@ -33,15 +33,15 @@
   <property name="styleSheet">
    <string notr="true">QMainWindow {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-        stop:0 #ffffff,
-        stop:0.42 #f7fbff,
-        stop:1 #d3e7fc);
+        stop:0 #f8fcff,
+        stop:0.42 #ddefff,
+        stop:1 #b9dcfb);
 }
 QWidget#centralwidget { background: transparent; }
 QGroupBox {
     font-weight: 600;
-    border: 1px solid #c9def5;
-    border-radius: 10px;
+    border: 1px solid #d6e6f5;
+    border-radius: 12px;
     margin-top: 12px;
     padding: 16px 14px 14px 14px;
     background: #ffffff;
@@ -51,49 +51,49 @@ QGroupBox::title {
     left: 14px;
     padding: 2px 10px;
     color: #1c4f86;
-    background-color: #e8f4ff;
+    background-color: #eaf5ff;
     border-radius: 6px;
 }
 QLineEdit, QListWidget, QPlainTextEdit, QComboBox {
-    border: 1px solid #c7dcf2;
+    border: 1px solid #c9dff2;
     border-radius: 7px;
     padding: 7px;
     background: #ffffff;
     color: #22384f;
-    selection-background-color: #cfe6ff;
+    selection-background-color: #d8ecff;
     selection-color: #17375e;
 }
 QLineEdit:focus, QListWidget:focus, QPlainTextEdit:focus, QComboBox:focus {
-    border: 1px solid #6aa9e8;
+    border: 1px solid #4aa4e8;
 }
 QComboBox {
     padding-right: 26px;
 }
 QComboBox QAbstractItemView {
     background: #ffffff;
-    border: 1px solid #c7dcf2;
+    border: 1px solid #c9dff2;
     selection-background-color: #d8ecff;
     selection-color: #17375e;
     outline: none;
 }
 QPushButton {
-    border: 1px solid #bcd8f3;
+    border: 1px solid #c4dcf0;
     border-radius: 7px;
     padding: 7px 13px;
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
         stop:0 #ffffff,
-        stop:1 #eaf5ff);
-    color: #1d4f7a;
+        stop:1 #eef8ff);
+    color: #2b6da5;
 }
 QPushButton:hover {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
         stop:0 #f8fcff,
-        stop:1 #69b4fa);
-    border-color: #8fc5f0;
+        stop:1 #a9d8ff);
+    border-color: #7fc2f5;
 }
 QPushButton:pressed {
-    background: #cfe6fa;
-    border-color: #6aa9e8;
+    background: #cfe9ff;
+    border-color: #4aa4e8;
 }
 QPushButton:disabled {
     color: #9db2c6;
@@ -102,38 +102,38 @@ QPushButton:disabled {
 }
 QPushButton#startButton {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 #4c9af5,
-        stop:1 #578bfa);
+        stop:0 #57b6ff,
+        stop:1 #2678df);
     color: #ffffff;
-    border-color: #2563eb;
+    border-color: #2678df;
     font-weight: 600;
 }
 QPushButton#startButton:hover {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 #66adff,
-        stop:1 #3478ed);
+        stop:0 #74ccff,
+        stop:1 #2b86ee);
 }
-QPushButton#startButton:pressed { background: #1d4ed8; }
+QPushButton#startButton:pressed { background: #1c68c9; }
 QPushButton#startButton:disabled {
     background: #b7d4f5;
     border-color: #b7d4f5;
     color: #f0f7ff;
 }
 QProgressBar {
-    border: 1px solid #c7dcf2;
+    border: 1px solid #c9def2;
     border-radius: 8px;
     height: 20px;
     text-align: center;
-    background: #edf6ff;
+    background: #eaf5ff;
     color: #1d4f7a;
 }
 QProgressBar::chunk {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-        stop:0 #8bc3fc,
-        stop:1 #2563eb);
+        stop:0 #74ccff,
+        stop:1 #2b86ee);
     border-radius: 7px;
 }
-QCheckBox { color: #274a69; spacing: 6px; }
+QCheckBox { color: #3f5f7b; spacing: 6px; }
 QListWidget::item {
     padding: 4px 6px;
     border-radius: 4px;
@@ -143,21 +143,26 @@ QListWidget::item:selected {
     color: #17375e;
 }
 QListWidget::item:hover { background: #eef7ff; }
-QLabel#titleLabel { color: #17375e; }
-QLabel#subtitleLabel, QLabel#inputHintLabel, QLabel#outputHintLabel {
-    color: #5f7f9f;
+QLabel#titleLabel {
+    color: #123a5e;
+    font-size: 20px;
 }
+QLabel#subtitleLabel { color: #6c7f91; }
+QLabel#inputHintLabel, QLabel#outputHintLabel { color: #8296a9; }
 QStatusBar {
     background: #f2f9ff;
     color: #4a6b88;
 }
 QFrame#headerPanel {
-    background-color: rgb(40, 120, 200);
-    border: none;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #fffdf8,
+        stop:1 #fbf7ee);
+    border: 1px solid #e8dfcf;
     border-radius: 12px;
 }
-QFrame#headerPanel QLabel#titleLabel { color: #ffffff; }
-QFrame#headerPanel QLabel#subtitleLabel { color: #e8f3ff; }</string>
+QFrame#headerPanel QLabel#titleLabel { color: #123a5e; }
+QFrame#headerPanel QLabel#subtitleLabel { color: #6c7f91; }
+</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="rootLayout">
@@ -198,14 +203,14 @@ QFrame#headerPanel QLabel#subtitleLabel { color: #e8f3ff; }</string>
         <widget class="QLabel" name="logoLabel">
          <property name="minimumSize">
           <size>
-           <width>140</width>
-           <height>56</height>
+           <width>150</width>
+           <height>58</height>
           </size>
          </property>
          <property name="maximumSize">
           <size>
-           <width>56</width>
-           <height>56</height>
+           <width>150</width>
+           <height>58</height>
           </size>
          </property>
          <property name="pixmap">
@@ -230,14 +235,14 @@ QFrame#headerPanel QLabel#subtitleLabel { color: #e8f3ff; }</string>
             </font>
            </property>
            <property name="text">
-            <string>TC 元件库智能运维系统</string>
+            <string>太重TC元件库智能运维系统</string>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QLabel" name="subtitleLabel">
            <property name="text">
-            <string>导入物料总表（.xlsx），根据选项按固定模板生成对应表。</string>
+            <string>TZ TC Material Intelligent Operation and Maintenance System</string>
            </property>
           </widget>
          </item>
@@ -297,7 +302,7 @@ QFrame#headerPanel QLabel#subtitleLabel { color: #e8f3ff; }</string>
             </size>
            </property>
            <property name="toolTip">
-            <string>支持一次添加多个 .xlsx 文件，也可以把文件拖到窗口里。</string>
+            <string>支持一次添加多个 .xlsx / .xlsm 文件，也可以把文件拖到窗口里。</string>
            </property>
            <property name="alternatingRowColors">
             <bool>true</bool>
@@ -310,7 +315,7 @@ QFrame#headerPanel QLabel#subtitleLabel { color: #e8f3ff; }</string>
          <item>
           <widget class="QLabel" name="inputHintLabel">
            <property name="text">
-            <string>只接收 .xlsx；可多选或拖拽添加。文件按列表顺序合并。</string>
+            <string>只接收 .xlsx / .xlsm；可多选或拖拽添加。文件按列表顺序合并。</string>
            </property>
           </widget>
          </item>
@@ -472,11 +477,37 @@ QFrame#headerPanel QLabel#subtitleLabel { color: #e8f3ff; }</string>
             <string>按 output_Eplan.xml 生成 EPLAN 部件管理 XML；包含所有合法数据行。</string>
            </property>
            <property name="text">
-            <string>生成 XML 表</string>
+            <string>生成 XML 文件</string>
            </property>
           </widget>
          </item>
+                  <item>
+          <spacer name="exportPdmSpacer">
+           <property name="orientation">
+            <enum>Qt::Orientation::Horizontal</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Policy::Fixed</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>28</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
          <item>
+          <widget class="QCheckBox" name="pdmCheck">
+           <property name="toolTip">
+            <string>按 output_pdm.xlsx 生成 PDM 表；PDM 输入模板与 TC/XML 不同，不能与 TC/XML 同时勾选。</string>
+           </property>
+           <property name="text">
+            <string>生成 PDM 表</string>
+           </property>
+          </widget>
+         </item>
+<item>
           <spacer name="exportStretch">
            <property name="orientation">
             <enum>Qt::Orientation::Horizontal</enum>

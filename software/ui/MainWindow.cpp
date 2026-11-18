@@ -40,7 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
 
     ui->tcCheck->setChecked(m_settings.value(QStringLiteral("exportTc"), true).toBool());
-    ui->xmlCheck->setChecked(m_settings.value(QStringLiteral("exportXml"), false).toBool());
+    ui->xmlCheck->setChecked(m_settings.value(QStringLiteral("exportXml"), true).toBool());
     ui->skipInvalidCheck->setChecked(
         m_settings.value(QStringLiteral("skipInvalid"), false).toBool());
 
