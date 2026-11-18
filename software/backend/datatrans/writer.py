@@ -112,6 +112,70 @@ def write_table(
         raise OutputError(f"写出失败：{output}（{exc}）") from exc
 
 
+def write_pdm_table(
+    *,
+    template_path: str | Path,
+    output_path: str | Path,
+    rows: Iterable[list[Any]],
+) -> None:
+    """把 PDM 输入行 B:N 复制到模板 A:M，N 列到末尾使用模板第 2 行默认值。"""
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        workbook = load_workbook(filename=Path(template_path), data_only=False)
+    except PermissionError as exc:
+        raise OutputError(f"无法读取 PDM 模板（可能被占用）：{template_path}") from exc
+    except InvalidFileException as exc:
+        raise OutputError(f"PDM 模板不是有效的 .xlsx 文件：{template_path}") from exc
+    except Exception as exc:
+        raise OutputError(f"打开 PDM 模板失败：{template_path}（{exc}）") from exc
+
+    try:
+        worksheet = workbook.active or workbook.worksheets[0]
+        max_col = worksheet.max_column
+        defaults = [
+            worksheet.cell(row=2, column=col).value
+            for col in range(14, max_col + 1)
+        ] if worksheet.max_row >= 2 else [None] * max(0, max_col - 13)
+
+        # 保留第 1 行表头，删除模板里的示例/默认数据行。
+        if worksheet.max_row > 1:
+            worksheet.delete_rows(2, worksheet.max_row - 1)
+
+        for row_index, values in enumerate(rows, start=2):
+            row_values = list(values)[:13]
+            row_values.extend([None] * (13 - len(row_values)))
+            for col, value in enumerate(row_values, start=1):
+                worksheet.cell(row=row_index, column=col, value=value)
+            for offset, value in enumerate(defaults, start=14):
+                worksheet.cell(row=row_index, column=offset, value=value)
+
+        tmp_path = output.with_name(output.name + f".{os.getpid()}.tmp.xlsx")
+        try:
+            workbook.save(tmp_path)
+            workbook.close()
+            os.replace(tmp_path, output)
+        except Exception:
+            try:
+                workbook.close()
+            except Exception:
+                pass
+            try:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+            except OSError:
+                pass
+            raise
+    except PermissionError as exc:
+        raise OutputError(
+            f"无法写入 PDM 输出文件，文件可能正在 Excel 中打开：{output}"
+        ) from exc
+    except Exception as exc:
+        if isinstance(exc, OutputError):
+            raise
+        raise OutputError(f"PDM 写出失败：{output}（{exc}）") from exc
+
+
 def make_output_paths(
     output_dir: str | Path,
     *,
@@ -138,4 +202,5 @@ def make_output_paths(
     return {
         "tc": unique(f"TC_{base}.xlsx"),
         "xml": unique(f"XML_{base}.xml"),
+        "pdm": unique(f"PDM_{base}.xlsx"),
     }

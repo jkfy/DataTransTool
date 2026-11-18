@@ -41,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->tcCheck->setChecked(m_settings.value(QStringLiteral("exportTc"), true).toBool());
     ui->xmlCheck->setChecked(m_settings.value(QStringLiteral("exportXml"), true).toBool());
+    ui->pdmCheck->setChecked(m_settings.value(QStringLiteral("exportPdm"), false).toBool());
     ui->skipInvalidCheck->setChecked(
         m_settings.value(QStringLiteral("skipInvalid"), false).toBool());
 
@@ -90,6 +91,24 @@ void MainWindow::setupConnections()
     connect(ui->cancelButton, &QPushButton::clicked, this, &MainWindow::cancelProcessing);
     connect(ui->openButton, &QPushButton::clicked, this, &MainWindow::openOutputDir);
 
+    // PDM 使用独立的输入模板，与 TC/XML 输出互斥。
+    connect(ui->pdmCheck, &QCheckBox::toggled, this, [this](bool checked) {
+        if (checked) {
+            ui->tcCheck->setChecked(false);
+            ui->xmlCheck->setChecked(false);
+        }
+    });
+    connect(ui->tcCheck, &QCheckBox::toggled, this, [this](bool checked) {
+        if (checked && ui->pdmCheck->isChecked()) {
+            ui->pdmCheck->setChecked(false);
+        }
+    });
+    connect(ui->xmlCheck, &QCheckBox::toggled, this, [this](bool checked) {
+        if (checked && ui->pdmCheck->isChecked()) {
+            ui->pdmCheck->setChecked(false);
+        }
+    });
+
     connect(m_backend, &BackendClient::progress, this, &MainWindow::onProgress);
     connect(m_backend, &BackendClient::logMessage, this, &MainWindow::onLog);
     connect(m_backend, &BackendClient::finished, this, &MainWindow::onFinished);
@@ -103,8 +122,8 @@ void MainWindow::addFiles()
                          QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
             .toString();
     const QStringList files = QFileDialog::getOpenFileNames(
-        this, QStringLiteral("选择物料总表（.xlsx）"), lastDir,
-        QStringLiteral("Excel 工作簿 (*.xlsx)"));
+        this, QStringLiteral("选择物料总表（.xlsx / .xlsm）"), lastDir,
+        QStringLiteral("Excel 工作簿 (*.xlsx *.xlsm)"));
     if (files.isEmpty()) {
         return;
     }
@@ -122,10 +141,11 @@ void MainWindow::addFile(const QString &path)
                              QStringLiteral("找不到文件：\n%1").arg(path));
         return;
     }
-    if (info.suffix().compare(QStringLiteral("xlsx"), Qt::CaseInsensitive) != 0) {
+    const QString suffix = info.suffix().toLower();
+    if (suffix != QStringLiteral("xlsx") && suffix != QStringLiteral("xlsm")) {
         QMessageBox::warning(
             this, QStringLiteral("格式不支持"),
-            QStringLiteral("只支持 .xlsx 格式：\n%1").arg(info.fileName()));
+            QStringLiteral("只支持 .xlsx / .xlsm 格式：\n%1").arg(info.fileName()));
         return;
     }
 
@@ -178,10 +198,11 @@ void MainWindow::startProcessing()
         return;
     }
 
-    if (!ui->tcCheck->isChecked() && !ui->xmlCheck->isChecked()) {
+    if (!ui->tcCheck->isChecked() && !ui->xmlCheck->isChecked()
+        && !ui->pdmCheck->isChecked()) {
         if (!quietMode()) {
             QMessageBox::warning(this, QStringLiteral("没有输出"),
-                                 QStringLiteral("请至少勾选一种输出文件（TC 或 XML）。"));
+                                 QStringLiteral("请至少勾选一种输出文件（TC、XML 或 PDM）。"));
         }
         return;
     }
@@ -205,6 +226,7 @@ void MainWindow::startProcessing()
     m_settings.setValue(QStringLiteral("lastOutputDir"), directory);
     m_settings.setValue(QStringLiteral("exportTc"), ui->tcCheck->isChecked());
     m_settings.setValue(QStringLiteral("exportXml"), ui->xmlCheck->isChecked());
+    m_settings.setValue(QStringLiteral("exportPdm"), ui->pdmCheck->isChecked());
     m_settings.setValue(QStringLiteral("skipInvalid"), ui->skipInvalidCheck->isChecked());
     m_settings.setValue(QStringLiteral("engineIndex"), ui->engineCombo->currentIndex());
 
@@ -219,7 +241,7 @@ void MainWindow::startProcessing()
     statusBar()->showMessage(QStringLiteral("正在启动后端…"));
 
     if (!m_backend->startJob(files, directory, ui->tcCheck->isChecked(),
-                             ui->xmlCheck->isChecked(),
+                             ui->xmlCheck->isChecked(), ui->pdmCheck->isChecked(),
                              ui->skipInvalidCheck->isChecked(), engineMode())) {
         // startJob 失败时已经通过 failed 信号给出提示，这里只恢复界面状态。
         if (!m_backend->isRunning()) {
@@ -360,6 +382,7 @@ void MainWindow::setBusy(bool busy)
                             static_cast<QWidget *>(ui->fileList),
                             static_cast<QWidget *>(ui->tcCheck),
                             static_cast<QWidget *>(ui->xmlCheck),
+                            static_cast<QWidget *>(ui->pdmCheck),
                             static_cast<QWidget *>(ui->skipInvalidCheck),
                             static_cast<QWidget *>(ui->engineCombo)}) {
         widget->setEnabled(!busy);

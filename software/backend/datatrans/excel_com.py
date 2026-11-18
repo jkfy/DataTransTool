@@ -67,8 +67,8 @@ def _new_excel(win32: Any) -> Any:
 
 
 def _validate_input_path(path: Path) -> None:
-    if path.suffix.lower() != config.INPUT_EXTENSION:
-        raise InputError(f"只支持 {config.INPUT_EXTENSION} 格式：{path.name}")
+    if path.suffix.lower() not in config.INPUT_EXTENSIONS:
+        raise InputError(f"只支持 {config.INPUT_EXTENSION_LABEL} 格式：{path.name}")
     if not path.exists():
         raise InputError(f"文件不存在：{path}")
     if not path.is_file():
@@ -196,6 +196,87 @@ def read_with_excel(
         worksheet = None
         used = None
         grid = None
+        gc.collect()
+        try:
+            if workbook is not None:
+                workbook.Close(SaveChanges=False)
+        except Exception:
+            pass
+        try:
+            if excel is not None:
+                excel.Quit()
+        except Exception:
+            pass
+        workbook = None
+        excel = None
+        gc.collect()
+        pythoncom.CoUninitialize()
+
+
+def read_pdm_with_excel(
+    path: str | Path,
+    sheet_name: str | None = None,
+):
+    """用 Excel COM 读取 PDM 输入，返回 B:N 原始行。"""
+    from .reader import PdmReadResult, pdm_rows_from_matrix
+
+    file_path = Path(path).resolve()
+    _validate_input_path(file_path)
+    if _is_password_protected_ole(file_path):
+        raise ExcelComError(
+            f"文件是受密码/IRM 保护的 OLE 格式，Excel 自动化会弹出密码框：{file_path}。"
+            "当前版本不绕过密码；请提供密码后另存，或让管理员导出为未加密 .xlsx。"
+        )
+    pythoncom, win32 = _load_com()
+    pythoncom.CoInitialize()
+
+    excel = None
+    workbook = None
+    worksheet = None
+    used = None
+    target = None
+    try:
+        excel = _new_excel(win32)
+        workbook = excel.Workbooks.Open(
+            Filename=str(file_path),
+            UpdateLinks=0,
+            ReadOnly=True,
+            AddToMru=False,
+            Notify=False,
+        )
+        if sheet_name:
+            try:
+                worksheet = workbook.Worksheets(sheet_name)
+            except Exception as exc:
+                raise ExcelComError(f"工作表不存在：{sheet_name}（{_com_error_text(exc)}）") from exc
+        else:
+            worksheet = workbook.ActiveSheet
+        used = worksheet.UsedRange
+        last_row = int(used.Row) + int(used.Rows.Count) - 1
+        if last_row < 1:
+            matrix: list[list[Any]] = []
+        else:
+            target = worksheet.Range(
+                worksheet.Cells(1, 1),
+                worksheet.Cells(last_row, 14),
+            )
+            matrix = _to_matrix(target.Value, last_row, 14)
+        return PdmReadResult(
+            file=str(file_path),
+            sheet=str(worksheet.Name),
+            rows=pdm_rows_from_matrix(matrix),
+            engine="excel",
+        )
+    except InputError:
+        raise
+    except Exception as exc:
+        raise ExcelComError(
+            f"Excel COM 读取 PDM 文件失败：{file_path}（{_com_error_text(exc)}）"
+        ) from exc
+    finally:
+        target = None
+        used = None
+        worksheet = None
         gc.collect()
         try:
             if workbook is not None:

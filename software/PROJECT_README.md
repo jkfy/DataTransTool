@@ -1,6 +1,6 @@
 # DataTransTool — TC / EPLAN 物料导入工具
 
-把物料总表（`.xlsx`）按固定模板转换成 **TC 表** 和 **EPLAN 部件 XML** 的桌面小工具。
+把物料总表（`.xlsx` / `.xlsm`）按固定模板转换成 **TC 表** 和 **EPLAN 部件 XML** 的桌面小工具。
 
 - 前端：Qt 6 / C++（Widgets）
 - 后端：Python 3 + openpyxl（可选本机 Excel COM 兼容加密文件），以独立 CLI 进程运行
@@ -16,7 +16,8 @@
 - 第一行表头、第二行提示内容自动跳过；
 - 必填校验：部件编号、类型编号、名称1、制造商、供应商；
 - 重量/宽度/高度/深度：空按 0，负数和非数字报错；
-- 是否导出 **只看界面勾选**：`生成 TC 表`、`生成 XML 表`，不再读取输入表的 `EPLAN` / `新TC` 列；
+- 是否导出 **只看界面勾选**：`生成 TC 表`、`生成 XML 表`、`生成 PDM 表`，不再读取输入表的 `EPLAN` / `新TC` 列；
+- PDM 表导出：输入表 B:N 列复制到 `output_pdm.xlsx` 的 A:M，N 列到末尾按模板填写；PDM 与 TC/XML 互斥；
 - TC 固定模板输出；EPLAN XML 固定模板输出；
 - 不再生成 Eplan Excel 表；
 - 文本日志 + `result.json` + 界面进度/错误提示；
@@ -60,6 +61,7 @@ DataTransTool/
     input_reference.xlsx   # 输入模板（第一行表头，第二行提示）
     output_TC.xlsx         # TC 输出模板
     output_Eplan.xml       # EPLAN 部件管理 XML 输出模板
+    output_pdm.xlsx        # PDM 输出模板
   data/                    # 样例数据
   packaging/
     build.ps1              # 一键构建 + 打包
@@ -78,7 +80,7 @@ DataTransTool/
 
 按 `templates/input_reference.xlsx` 的布局解析：
 
-- 只接收 **`.xlsx`**；`.xls`、`.xlsm` 会被拒绝。
+- 接收 **`.xlsx` / `.xlsm`**；只读取单元格内容，不执行、不修改宏。`.xls` 不支持。
 - 第一行是表头，第二行是模板提示内容（自动跳过），从第三行开始是正式数据。
 - 程序不写死行号：会在前 20 行里找命中列名最多的一行，并兼容“组表头 + 子表头”的两行布局。
 - 必需的列：`部件编号`、`类型编号`、`名称1`、`制造商`、`供应商`。
@@ -120,6 +122,7 @@ DataTransTool/
 
 - `TC_YYYYMMDD_HHMMSS_xxxxxx.xlsx`（勾选“生成 TC 表”时）
 - `XML_YYYYMMDD_HHMMSS_xxxxxx.xml`（勾选“生成 XML 表”时）
+- `PDM_YYYYMMDD_HHMMSS_xxxxxx.xlsx`（勾选“生成 PDM 表”时）
 - `import_YYYYMMDD_HHMMSS_xxxxxx.log`（UTF-8 with BOM，Windows 记事本可直接看）
 - `result.json`（结构化结果，供界面显示/排错）
 
@@ -188,9 +191,9 @@ datatrans-core.exe --engine excel ...
 
 1. 解压 `dist/DataTransTool-0.1.0-win64.zip`。
 2. 双击 `DataTransTool.exe`。
-3. 添加 `.xlsx` 文件、选择输出目录、点击“开始处理”。
+3. 添加 `.xlsx` / `.xlsm` 文件、选择输出目录、点击“开始处理”。
 
-普通 `.xlsx` 不需要安装 Python、Qt、Office，也不需要联网；如果处理的是透明加密文件，
+普通 `.xlsx` / `.xlsm` 不需要安装 Python、Qt、Office，也不需要联网；如果处理的是透明加密文件，
 需要目标机安装本机 Excel（见上一节）。详细说明见包内 `README.txt`。
 
 ### 方式二：源码开发模式
@@ -337,11 +340,12 @@ $env:DATATRANS_NO_DIALOGS = "1"
 ## 已知限制 / 约定
 
 - 只支持 `templates/input_reference.xlsx` 这一种输入布局；第一行表头，第二行提示内容跳过。
-- 只接收 `.xlsx`，不接收 `.xls` / `.xlsm`。
+- 接收 `.xlsx` / `.xlsm`；`.xls` 不支持。
 - 是否导出只看界面勾选 `生成 TC 表` / `生成 XML 表`；输入表不再需要 `EPLAN`、`新TC` 列。
 - TC 的 `是否合法`、`材料`、`采购类型` 留空。
 - XML 的 `P_ARTICLE_ERPNR` 来自 ERP编码、`P_ARTICLE_NOTE` 来自描述；`P_ARTICLE_QUANTITYUNIT` 来自数量单位（空按“件”）。
 - XML 包含所有合法数据行；根节点只更新 `count`，其余属性沿用 `output_Eplan.xml`。
+- PDM 输入模板与 TC/XML 不同，界面上 PDM 与 TC/XML 互斥；PDM 任务只做 B:N → A:M 复制和模板 N 列填充。
 - 多文件按列表顺序合并；重复的“类型编号 + 部件编号”只写警告，不自动去重。
 - 默认“有错误整批不导出”；需要部分导出时勾选“跳过错误行继续导出”。
 - 不做界面内预览/编辑；输出后可在 Excel 中检查。
@@ -365,7 +369,7 @@ $env:DATATRANS_NO_DIALOGS = "1"
 | 现象 | 处理 |
 |---|---|
 | 提示“找不到后端程序” | 确认 `backend\datatrans-core.exe` 存在，且未被杀毒隔离 |
-| 提示“只支持 .xlsx” | 输入必须是 `.xlsx`；`.xls`/`.xlsm` 请先另存为 `.xlsx` |
+| 提示“只支持 .xlsx / .xlsm” | 输入必须是 `.xlsx` 或 `.xlsm`；`.xls` 请先另存为 `.xlsx` |
 | 提示输出文件被占用 | 关闭 Excel 中打开的同名输出文件后重试 |
 | 校验失败 | 打开输出目录的 `import_*.log`，按 file/sheet/row/field 定位 |
 | 加密文件报 `file is not a zip file` | 确认目标机装有 Excel；程序会自动切换 Excel COM；查看日志是否出现 `engine=excel` |

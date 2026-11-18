@@ -9,8 +9,10 @@ from pathlib import Path
 APP_NAME = "DataTransTool"
 VERSION = "0.1.0"
 
-# 按需求：输入只接收 .xlsx；TC 输出使用 .xlsx 模板，EPLAN XML 使用 .xml 模板。
-INPUT_EXTENSION = ".xlsx"
+# 输入支持 .xlsx / .xlsm；只读取单元格内容，不执行、不修改宏。
+# TC/PDM 输出使用 .xlsx 模板，EPLAN XML 使用 .xml 模板。
+INPUT_EXTENSIONS = (".xlsx", ".xlsm")
+INPUT_EXTENSION_LABEL = ".xlsx / .xlsm"
 
 DEFAULT_MATERIAL_TYPE = "电器外购件"
 DEFAULT_MATERIAL = "成品"
@@ -102,10 +104,12 @@ TC_FALLBACK_HEADERS = (
 TEMPLATE_FILES = {
     "tc": "output_TC.xlsx",
     "xml": "output_Eplan.xml",
+    "pdm": "output_pdm.xlsx",
 }
 TEMPLATE_FALLBACK_FILES = {
     "tc": "output_Tc.xlsx",
     "xml": "output_Eplan.xml",
+    "pdm": "output_pdm.xlsx",
 }
 
 # EPLAN 部件管理 XML 中多语言文本的编码格式（与 output_Eplan.xml 一致）。

@@ -15,6 +15,7 @@ from datatrans.job import run_job
 
 ROOT = Path(__file__).resolve().parents[2]
 SAMPLE = ROOT / "backend" / "tests" / "fixtures" / "input_reference.xlsx"
+PDM_SAMPLE = ROOT / "backend" / "tests" / "fixtures" / "pdm_input.xlsx"
 TEMPLATES = ROOT / "templates"
 
 
@@ -44,6 +45,7 @@ class BackendTestCase(unittest.TestCase):
             "options": {
                 "export_tc": options.get("export_tc", True),
                 "export_xml": options.get("export_xml", False),
+                "export_pdm": options.get("export_pdm", False),
                 "on_invalid": options.get("on_invalid", "abort"),
             },
         }
@@ -75,12 +77,10 @@ class TestSampleOutput(BackendTestCase):
         )
         self.assertEqual(
             rows[1],
-            [None, "国产.BLST-4.6-150", "扎带", "11111111", "BLST-4.6-150", "国产", 0.01, None, None],
+            [None, "国产.BLST-4.6-150", "扎带", "11111111", "BLST-4.6-150", "国产", 0.01, "成品", "电器外购件"],
         )
         self.assertEqual(len(rows), 4)
         self.assertIsNone(rows[1][0])
-        self.assertIsNone(rows[1][7])
-        self.assertIsNone(rows[1][8])
 
     def test_xml_output_mapping(self) -> None:
         result = self.run_job_for(
@@ -201,8 +201,14 @@ class TestValidation(BackendTestCase):
         self.assertEqual(first["P_ARTICLE_DEPTH"], "0")
         self.assertEqual(first["P_ARTICLE_MOUNTINGSPACE"], "0")
 
-    def test_only_xlsx_accepted(self) -> None:
+    def test_xlsm_accepted(self) -> None:
         path = self.copy_sample("sample.xlsm")
+        result = self.run_job_for([path])
+        self.assertEqual(result.status, "success")
+        self.assertEqual(result.stats["rows_read"], 3)
+
+    def test_legacy_xls_rejected(self) -> None:
+        path = self.copy_sample("sample.xls")
         result = self.run_job_for([path])
         self.assertEqual(result.status, "failed")
         self.assertIn("UNSUPPORTED_EXTENSION", [issue.code for issue in result.issues])
@@ -235,6 +241,49 @@ class TestMultiFile(BackendTestCase):
         )
         rows = self.load_rows(result.outputs["tc"])
         self.assertEqual(len(rows), 7)
+
+
+class TestPdmOutput(BackendTestCase):
+    def copy_pdm_sample(self, name: str = "pdm.xlsx") -> Path:
+        target = self.input_dir / name
+        shutil.copy2(PDM_SAMPLE, target)
+        return target
+
+    def test_pdm_copies_b_to_n_into_a_to_m(self) -> None:
+        result = self.run_job_for(
+            [self.copy_pdm_sample()],
+            export_tc=False,
+            export_xml=False,
+            export_pdm=True,
+        )
+        self.assertEqual(result.status, "success")
+        self.assertIsNone(result.outputs["tc"])
+        self.assertIsNone(result.outputs["xml"])
+        self.assertTrue(Path(result.outputs["pdm"]).exists())
+        self.assertEqual(result.stats["pdm_rows"], 2)
+
+        rows = self.load_rows(result.outputs["pdm"])
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(
+            rows[1][:13],
+            ["P001", "M001", "G1", "长描述1", "F1", "D1", "V1", "S1", "材质1", 1.2, 5, "备注1", "备注A"],
+        )
+        self.assertEqual(
+            rows[1][13:],
+            ["WG", 3, False, "C", "B", "电气标准管理员（dqbzg1)", None, "DQItem"],
+        )
+        self.assertEqual(rows[2][0], "P002")
+
+    def test_pdm_conflicts_with_tc_xml(self) -> None:
+        result = self.run_job_for(
+            [self.copy_pdm_sample()],
+            export_tc=True,
+            export_xml=False,
+            export_pdm=True,
+        )
+        self.assertEqual(result.status, "failed")
+        self.assertIn("OUTPUT_CONFLICT", [issue.code for issue in result.issues])
+        self.assertIsNone(result.outputs["pdm"])
 
 
 class TestHeaderHelpers(unittest.TestCase):

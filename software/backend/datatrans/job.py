@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import config
-from .excel_com import read_with_excel, write_table_with_excel
+from .excel_com import read_pdm_with_excel, read_with_excel, write_table_with_excel
 from .mapper import map_tc
 from .models import FileSummary, Issue, JobOptions, JobResult, MaterialRecord
-from .reader import InputError, read_input_file
+from .reader import InputError, read_input_file, read_pdm_file
 from .report import JobLogger, write_result_json
 from .validator import parse_record
-from .writer import OutputError, make_output_paths, write_table
+from .writer import OutputError, make_output_paths, write_pdm_table, write_table
 from .xml_writer import write_parts_xml
 
 ProgressCallback = Callable[[dict[str, Any]], None]
@@ -81,6 +81,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
         output_dir=output_dir,
         export_tc=_as_bool(options_raw.get("export_tc"), True),
         export_xml=_as_bool(options_raw.get("export_xml"), False),
+        export_pdm=_as_bool(options_raw.get("export_pdm"), False),
         on_invalid=str(options_raw.get("on_invalid") or "abort").strip().lower(),
         engine=str(options_raw.get("engine") or "auto").strip().lower(),
         sheet_name=(str(options_raw.get("sheet_name")).strip() or None)
@@ -98,7 +99,8 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
     issues: list[Issue] = []
     files: list[FileSummary] = []
     records: list[MaterialRecord] = []
-    written_rows = {"tc": 0, "xml": 0}
+    pdm_rows: list[list[Any]] = []
+    written_rows = {"tc": 0, "xml": 0, "pdm": 0}
     used_excel = False
     logger: JobLogger | None = None
     result_path = Path(output_dir) / "result.json" if output_dir else Path()
@@ -120,6 +122,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             "rows_invalid": sum(item.rows_invalid for item in files),
             "tc_rows": written_rows["tc"],
             "xml_rows": written_rows["xml"],
+            "pdm_rows": written_rows["pdm"],
             "errors": error_count,
             "warnings": warning_count,
             "duration_ms": duration_ms,
@@ -128,7 +131,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             job_id=job_id,
             status=status,
             ok=(status != "failed") if ok is None else ok,
-            outputs=outputs or {"tc": None, "xml": None},
+            outputs=outputs or {"tc": None, "xml": None, "pdm": None},
             stats=stats,
             issues=issues,
             log_path=str(logger.log_path) if logger else "",
@@ -155,7 +158,16 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
     if not inputs:
         issues.append(_issue("error", "INPUT_MISSING", "未选择任何输入文件"))
         return finish("failed", "未选择任何输入文件")
-    if not options.export_tc and not options.export_xml:
+    if options.export_pdm and (options.export_tc or options.export_xml):
+        issues.append(
+            _issue(
+                "error",
+                "OUTPUT_CONFLICT",
+                "生成 PDM 表时不能同时生成 TC/XML 表；PDM 输入模板与 TC/XML 不同。",
+            )
+        )
+        return finish("failed", "PDM 表与 TC/XML 表不能同时生成")
+    if not options.export_tc and not options.export_xml and not options.export_pdm:
         issues.append(_issue("error", "NO_OUTPUT_SELECTED", "至少选择生成一种输出文件"))
         return finish("failed", "至少选择生成一种输出文件")
 
@@ -179,6 +191,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
         output_dir=output_dir,
         export_tc=options.export_tc,
         export_xml=options.export_xml,
+        export_pdm=options.export_pdm,
         on_invalid=options.on_invalid,
         engine=options.engine,
     )
@@ -197,6 +210,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
     template_paths = {
         "tc": config.template_path("tc", options.templates_dir) if options.export_tc else None,
         "xml": config.template_path("xml", options.templates_dir) if options.export_xml else None,
+        "pdm": config.template_path("pdm", options.templates_dir) if options.export_pdm else None,
     }
     for kind, path in template_paths.items():
         if path is not None and not Path(path).exists():
@@ -227,8 +241,8 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             },
         )
 
-        if path.suffix.lower() != config.INPUT_EXTENSION:
-            message = f"只支持 {config.INPUT_EXTENSION} 格式"
+        if path.suffix.lower() not in config.INPUT_EXTENSIONS:
+            message = f"只支持 {config.INPUT_EXTENSION_LABEL} 格式"
             issues.append(
                 _issue("error", "UNSUPPORTED_EXTENSION", message, file=str(path))
             )
@@ -242,6 +256,79 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             summary.error = message
             files.append(summary)
             logger.issue(issues[-1])
+            continue
+
+        if options.export_pdm:
+            try:
+                if options.engine == "excel":
+                    pdm_result = read_pdm_with_excel(path, options.sheet_name)
+                elif options.engine == "openpyxl":
+                    pdm_result = read_pdm_file(path, options.sheet_name)
+                else:
+                    try:
+                        pdm_result = read_pdm_file(path, options.sheet_name)
+                    except Exception as openpyxl_exc:
+                        logger.warning(
+                            "openpyxl 读取 PDM 失败，尝试用本机 Excel 读取",
+                            file=str(path),
+                            error=str(openpyxl_exc),
+                        )
+                        try:
+                            pdm_result = read_pdm_with_excel(path, options.sheet_name)
+                        except Exception as excel_exc:
+                            raise InputError(
+                                f"openpyxl 读取失败：{openpyxl_exc}；"
+                                f"Excel COM 也失败：{excel_exc}"
+                            ) from excel_exc
+                        logger.info(
+                            "已切换到 Excel COM 读取 PDM",
+                            file=str(path),
+                            engine=pdm_result.engine,
+                        )
+                if pdm_result.engine == "excel":
+                    used_excel = True
+            except InputError as exc:
+                issues.append(_issue("error", "INPUT_ERROR", str(exc), file=str(path)))
+                summary.error = str(exc)
+                files.append(summary)
+                logger.issue(issues[-1])
+                continue
+            except Exception as exc:
+                issues.append(
+                    _issue("error", "INPUT_ERROR", f"读取失败：{exc}", file=str(path))
+                )
+                summary.error = str(exc)
+                files.append(summary)
+                logger.issue(issues[-1])
+                continue
+
+            summary.sheet = pdm_result.sheet
+            summary.engine = pdm_result.engine
+            summary.rows_read = len(pdm_result.rows)
+            summary.rows_valid = len(pdm_result.rows)
+            for issue in pdm_result.issues:
+                issues.append(issue)
+                logger.issue(issue)
+            pdm_rows.extend(pdm_result.rows)
+            files.append(summary)
+            logger.info(
+                "PDM 读取完成",
+                file=str(path),
+                sheet=pdm_result.sheet,
+                engine=pdm_result.engine,
+                rows=len(pdm_result.rows),
+            )
+            _emit(
+                progress,
+                {
+                    "type": "progress",
+                    "stage": "read",
+                    "current": index,
+                    "total": len(inputs),
+                    "file": str(path),
+                    "message": f"已读取 PDM {path.name}：{summary.rows_read} 行",
+                },
+            )
             continue
 
         try:
@@ -358,6 +445,51 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
             f"校验发现 {error_count} 个错误，未生成输出文件；请查看日志或勾选“跳过错误行继续导出”。",
         )
 
+    if options.export_pdm:
+        if not pdm_rows:
+            logger.warning("没有可导出的 PDM 数据行")
+            issues.append(_issue("warning", "NO_EXPORT_ROWS", "没有可导出的 PDM 数据行"))
+        output_paths = make_output_paths(output_dir, job_id=job_id)
+        outputs: dict[str, str | None] = {"tc": None, "xml": None, "pdm": None}
+        _emit(
+            progress,
+            {
+                "type": "progress",
+                "stage": "write",
+                "current": 0,
+                "total": 1,
+                "message": f"写出 PDM 表（{len(pdm_rows)} 行）",
+            },
+        )
+        try:
+            write_pdm_table(
+                template_path=template_paths["pdm"],
+                output_path=output_paths["pdm"],
+                rows=pdm_rows,
+            )
+            outputs["pdm"] = str(output_paths["pdm"])
+            written_rows["pdm"] = len(pdm_rows)
+            logger.info("PDM 表写出完成", path=str(output_paths["pdm"]), rows=len(pdm_rows))
+        except OutputError as exc:
+            issues.append(_issue("error", "OUTPUT_ERROR", str(exc), field_name="pdm"))
+            logger.issue(issues[-1])
+            return finish("failed", "PDM 输出文件写出失败", outputs)
+        status = "success" if error_count == 0 and pdm_rows else "partial"
+        message = f"完成：{len(files)} 个文件，PDM {len(pdm_rows)} 行"
+        if not pdm_rows:
+            message = "完成，但没有可导出的 PDM 数据行（已生成只含表头的表）"
+        _emit(
+            progress,
+            {
+                "type": "progress",
+                "stage": "write",
+                "current": 1,
+                "total": 1,
+                "message": "输出完成",
+            },
+        )
+        return finish(status, message, outputs)
+
     valid_records = [record for record in records if record.valid]
     tc_records = list(valid_records) if options.export_tc else []
     xml_records = list(valid_records) if options.export_xml else []
@@ -367,7 +499,7 @@ def run_job(payload: dict[str, Any], progress: ProgressCallback | None = None) -
         issues.append(_issue("warning", "NO_EXPORT_ROWS", "没有可导出的数据行"))
 
     output_paths = make_output_paths(output_dir, job_id=job_id)
-    outputs: dict[str, str | None] = {"tc": None, "xml": None}
+    outputs: dict[str, str | None] = {"tc": None, "xml": None, "pdm": None}
     write_failed = False
     write_total = int(options.export_tc) + int(options.export_xml)
     write_index = 0

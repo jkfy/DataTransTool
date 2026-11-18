@@ -84,11 +84,11 @@ function Reset-CleanTemplates {
         Remove-Item -Recurse -Force $cleanTemplatesDir
     }
     New-Item -ItemType Directory -Path $cleanTemplatesDir -Force | Out-Null
-    $allowedTemplates = @('input_reference.xlsx', 'output_TC.xlsx', 'output_Eplan.xml')
+    $allowedTemplates = @('input_reference.xlsx', 'output_TC.xlsx', 'output_Eplan.xml', 'output_pdm.xlsx')
     Get-ChildItem -Path $templatesDir -File |
         Where-Object { $_.Name -in $allowedTemplates } |
         Copy-Item -Destination $cleanTemplatesDir -Force
-    foreach ($required in @('output_TC.xlsx', 'output_Eplan.xml')) {
+    foreach ($required in @('output_TC.xlsx', 'output_Eplan.xml', 'output_pdm.xlsx')) {
         if (-not (Test-Path (Join-Path $cleanTemplatesDir $required))) {
             throw "模板目录缺少 $required：$templatesDir"
         }

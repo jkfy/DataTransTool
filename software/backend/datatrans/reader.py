@@ -17,7 +17,7 @@ from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
 from . import config
-from .headers import HeaderInfo, describe_header, find_input_header
+from .headers import HeaderInfo, describe_header, find_input_header, normalize_header
 from .models import Issue, RawRow
 
 
@@ -31,6 +31,17 @@ class ReadResult:
     sheet: str
     header: HeaderInfo | None
     rows: list[RawRow] = field(default_factory=list)
+    issues: list[Issue] = field(default_factory=list)
+    engine: str = "openpyxl"
+
+
+@dataclass(slots=True)
+class PdmReadResult:
+    """PDM 输入：不按 TC 表头解析，直接按 B:N 原样取行。"""
+
+    file: str
+    sheet: str
+    rows: list[list[Any]] = field(default_factory=list)
     issues: list[Issue] = field(default_factory=list)
     engine: str = "openpyxl"
 
@@ -242,8 +253,8 @@ def read_input_file(
     file_path = Path(path)
     file_text = str(file_path)
 
-    if file_path.suffix.lower() != config.INPUT_EXTENSION:
-        raise InputError(f"只支持 {config.INPUT_EXTENSION} 格式：{file_path.name}")
+    if file_path.suffix.lower() not in config.INPUT_EXTENSIONS:
+        raise InputError(f"只支持 {config.INPUT_EXTENSION_LABEL} 格式：{file_path.name}")
     if not file_path.exists():
         raise InputError(f"文件不存在：{file_path}")
     if not file_path.is_file():
@@ -289,6 +300,108 @@ def read_input_file(
             sheet_title=worksheet.title,
             engine="openpyxl",
             extra_issues=extra_issues,
+        )
+    finally:
+        workbook.close()
+
+
+_PDM_HEADER_LABELS = {
+    normalize_header(value)
+    for value in (
+        "部件编号",
+        "主数据编码",
+        "零件组ID",
+        "长描述",
+        "查找编号",
+        "bl_item_图号",
+        "版本名称",
+        "bl_rev_规格",
+        "bl_rev_材料",
+        "bl_rev_件重",
+        "数量",
+        "bl_rev_备注",
+        "备注1",
+    )
+}
+
+
+def pdm_rows_from_matrix(matrix: list[list[Any]]) -> list[list[Any]]:
+    """从二维矩阵取 B:N（第 2~14 列），第一行若像 PDM 表头则跳过。"""
+    rows: list[list[Any]] = []
+    header_checked = False
+    for raw in matrix:
+        values = list(raw or [])
+        payload = list(values[1:14])
+        payload.extend([None] * (13 - len(payload)))
+        if all(_is_blank(value) for value in payload):
+            continue
+        if not header_checked:
+            header_checked = True
+            matches = sum(
+                1 for value in payload if normalize_header(value) in _PDM_HEADER_LABELS
+            )
+            if matches >= 2:
+                continue
+        rows.append(payload)
+    return rows
+
+
+def read_pdm_file(
+    path: str | Path,
+    sheet_name: str | None = None,
+) -> PdmReadResult:
+    """用 openpyxl 读取 PDM 输入；只取 B:N，不做 TC 表头校验。"""
+    file_path = Path(path)
+    file_text = str(file_path)
+    if file_path.suffix.lower() not in config.INPUT_EXTENSIONS:
+        raise InputError(f"只支持 {config.INPUT_EXTENSION_LABEL} 格式：{file_path.name}")
+    if not file_path.exists():
+        raise InputError(f"文件不存在：{file_path}")
+    if not file_path.is_file():
+        raise InputError(f"不是文件：{file_path}")
+
+    try:
+        workbook = load_workbook(
+            filename=file_path,
+            data_only=True,
+            read_only=False,
+            keep_links=False,
+        )
+    except PermissionError as exc:
+        raise InputError(f"无法读取文件（可能被占用）：{file_path}") from exc
+    except InvalidFileException as exc:
+        raise InputError(f"不是有效的 Excel .xlsx 文件：{file_path}") from exc
+    except Exception as exc:
+        raise InputError(f"openpyxl 打开失败：{file_path}（{exc}）") from exc
+
+    try:
+        issues: list[Issue] = []
+        if sheet_name:
+            if sheet_name not in workbook.sheetnames:
+                raise InputError(f"工作表不存在：{sheet_name}")
+            worksheet = workbook[sheet_name]
+        else:
+            worksheet = workbook.active or workbook.worksheets[0]
+            if len(workbook.sheetnames) > 1:
+                issues.append(
+                    _issue(
+                        "info",
+                        "MULTI_SHEET",
+                        f"工作簿包含多个工作表，使用活动工作表“{worksheet.title}”",
+                        file_text,
+                        worksheet.title,
+                    )
+                )
+        matrix = [
+            list(row)
+            for row in worksheet.iter_rows(min_row=1, max_col=14, values_only=True)
+        ]
+        return PdmReadResult(
+            file=file_text,
+            sheet=worksheet.title,
+            rows=pdm_rows_from_matrix(matrix),
+            issues=issues,
+            engine="openpyxl",
         )
     finally:
         workbook.close()

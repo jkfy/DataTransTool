@@ -23,7 +23,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description="DataTransTool Python 后端：物料总表 -> TC / EPLAN XML",
     )
     parser.add_argument("--job", help="job.json 路径；提供后其余输入参数可省略")
-    parser.add_argument("--input", action="append", default=[], help="输入 .xlsx，可重复")
+    parser.add_argument("--input", action="append", default=[], help="输入 .xlsx / .xlsm，可重复")
     parser.add_argument("--out-dir", help="输出目录")
     parser.add_argument("--templates", help="模板目录（默认自动查找 templates/）")
     parser.add_argument("--sheet", help="指定工作表；默认活动工作表")
@@ -37,6 +37,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--xml", dest="export_xml", action="store_true", default=None,
                         help="生成 EPLAN 部件 XML")
     parser.add_argument("--no-xml", dest="export_xml", action="store_false")
+    parser.add_argument("--pdm", dest="export_pdm", action="store_true", default=None,
+                        help="生成 PDM 表（与 TC/XML 互斥）")
+    parser.add_argument("--no-pdm", dest="export_pdm", action="store_false")
     parser.add_argument("--skip-invalid", action="store_true", help="跳过错误行继续导出")
     parser.add_argument("--abort-on-invalid", action="store_true", help="有错误时整批不导出")
     parser.add_argument("--progress", action="store_true", help="stdout 输出 JSONL 进度")
@@ -79,6 +82,8 @@ def main(argv: list[str] | None = None) -> int:
             payload.setdefault("options", {})["export_tc"] = args.export_tc
         if args.export_xml is not None:
             payload.setdefault("options", {})["export_xml"] = args.export_xml
+        if args.export_pdm is not None:
+            payload.setdefault("options", {})["export_pdm"] = args.export_pdm
         if args.skip_invalid:
             payload.setdefault("options", {})["on_invalid"] = "skip"
         if args.abort_on_invalid:

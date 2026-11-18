@@ -222,6 +222,22 @@ QFrame#headerPanel QLabel#subtitleLabel { color: #6c7f91; }
         </widget>
        </item>
        <item>
+        <spacer name="logoSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Policy::Fixed</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>30</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
         <layout class="QVBoxLayout" name="headerTextLayout">
          <property name="spacing">
           <number>2</number>
@@ -230,7 +246,7 @@ QFrame#headerPanel QLabel#subtitleLabel { color: #6c7f91; }
           <widget class="QLabel" name="titleLabel">
            <property name="font">
             <font>
-             <pointsize>18</pointsize>
+             <pointsize>-1</pointsize>
              <bold>true</bold>
             </font>
            </property>
@@ -481,7 +497,7 @@ QFrame#headerPanel QLabel#subtitleLabel { color: #6c7f91; }
            </property>
           </widget>
          </item>
-                  <item>
+         <item>
           <spacer name="exportPdmSpacer">
            <property name="orientation">
             <enum>Qt::Orientation::Horizontal</enum>
@@ -507,7 +523,7 @@ QFrame#headerPanel QLabel#subtitleLabel { color: #6c7f91; }
            </property>
           </widget>
          </item>
-<item>
+         <item>
           <spacer name="exportStretch">
            <property name="orientation">
             <enum>Qt::Orientation::Horizontal</enum>

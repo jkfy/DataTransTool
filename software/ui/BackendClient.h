@@ -24,6 +24,7 @@ public:
                   const QString &outputDir,
                   bool exportTc,
                   bool exportXml,
+                  bool exportPdm,
                   bool skipInvalid,
                   const QString &engine = QStringLiteral("auto"));
     void cancel();
@@ -52,6 +53,7 @@ private:
                         const QString &outputDir,
                         bool exportTc,
                         bool exportXml,
+                        bool exportPdm,
                         bool skipInvalid,
                         const QString &engine);
     QString resolveProgram(QStringList &arguments, QString &workingDirectory, QString &error) const;

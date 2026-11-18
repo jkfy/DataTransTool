@@ -38,6 +38,9 @@ add_custom_command(TARGET DataTransTool POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/../templates/output_Eplan.xml"
         "$<TARGET_FILE_DIR:DataTransTool>/templates/output_Eplan.xml"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/../templates/output_pdm.xlsx"
+        "$<TARGET_FILE_DIR:DataTransTool>/templates/output_pdm.xlsx"
     COMMENT "Copying templates next to DataTransTool.exe"
 )
 

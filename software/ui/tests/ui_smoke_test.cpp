@@ -18,6 +18,7 @@ class UiSmokeTest : public QObject
 private slots:
     void initTestCase();
     void processSample();
+    void processPdm();
 };
 
 void UiSmokeTest::initTestCase()
@@ -64,15 +65,31 @@ void UiSmokeTest::processSample()
     }
     QVERIFY(startButton);
 
+    QCheckBox *tcCheck = nullptr;
     QCheckBox *xmlCheck = nullptr;
+    QCheckBox *pdmCheck = nullptr;
     for (QCheckBox *check : window.findChildren<QCheckBox *>()) {
-        if (check->text().contains(QStringLiteral("XML"))) {
+        if (check->text().contains(QStringLiteral("TC"))) {
+            tcCheck = check;
+        } else if (check->text().contains(QStringLiteral("XML"))) {
             xmlCheck = check;
-            break;
+        } else if (check->text().contains(QStringLiteral("PDM"))) {
+            pdmCheck = check;
         }
     }
+    QVERIFY(tcCheck);
     QVERIFY(xmlCheck);
+    QVERIFY(pdmCheck);
+
+    // PDM 与 TC/XML 必须互斥。
+    pdmCheck->setChecked(true);
+    QVERIFY(!tcCheck->isChecked());
+    QVERIFY(!xmlCheck->isChecked());
+    tcCheck->setChecked(true);
+    QVERIFY(!pdmCheck->isChecked());
     xmlCheck->setChecked(true);
+    QVERIFY(tcCheck->isChecked());
+    QVERIFY(xmlCheck->isChecked());
 
     startButton->click();
 
@@ -88,6 +105,82 @@ void UiSmokeTest::processSample()
         QDir::Files);
     QCOMPARE(files.size(), 2);
 
+    window.close();
+}
+
+void UiSmokeTest::processPdm()
+{
+    const QString sample = qEnvironmentVariable("DATATRANS_PDM_SAMPLE");
+    if (sample.isEmpty() || !QFileInfo::exists(sample)) {
+        QSKIP("DATATRANS_PDM_SAMPLE is not set");
+    }
+
+    QTemporaryDir output;
+    QVERIFY(output.isValid());
+
+    QSettings settings(QStringLiteral("DataTransTool"), QStringLiteral("DataTransTool"));
+    settings.clear();
+    settings.sync();
+
+    MainWindow window;
+    window.setGeometry(100, 100, 960, 780);
+    window.show();
+    QTest::qWait(300);
+
+    auto *fileList = window.findChild<QListWidget *>();
+    auto *outputEdit = window.findChild<QLineEdit *>();
+    auto *log = window.findChild<QPlainTextEdit *>();
+    QVERIFY(fileList);
+    QVERIFY(outputEdit);
+    QVERIFY(log);
+    outputEdit->setText(output.path());
+
+    auto *item = new QListWidgetItem(QFileInfo(sample).fileName(), fileList);
+    item->setData(Qt::UserRole, sample);
+
+    QCheckBox *tcCheck = nullptr;
+    QCheckBox *xmlCheck = nullptr;
+    QCheckBox *pdmCheck = nullptr;
+    for (QCheckBox *check : window.findChildren<QCheckBox *>()) {
+        if (check->text().contains(QStringLiteral("TC"))) {
+            tcCheck = check;
+        } else if (check->text().contains(QStringLiteral("XML"))) {
+            xmlCheck = check;
+        } else if (check->text().contains(QStringLiteral("PDM"))) {
+            pdmCheck = check;
+        }
+    }
+    QVERIFY(tcCheck);
+    QVERIFY(xmlCheck);
+    QVERIFY(pdmCheck);
+
+    pdmCheck->setChecked(true);
+    QVERIFY(!tcCheck->isChecked());
+    QVERIFY(!xmlCheck->isChecked());
+
+    QPushButton *startButton = nullptr;
+    for (QPushButton *button : window.findChildren<QPushButton *>()) {
+        if (button->text().contains(QStringLiteral("开始处理"))) {
+            startButton = button;
+            break;
+        }
+    }
+    QVERIFY(startButton);
+    startButton->click();
+
+    QTRY_VERIFY_WITH_TIMEOUT(
+        log->toPlainText().contains(QStringLiteral("结果文件："))
+            || log->toPlainText().contains(QStringLiteral("处理失败")),
+        30000);
+    QVERIFY2(log->toPlainText().contains(QStringLiteral("结果文件：")),
+             qPrintable(log->toPlainText()));
+
+    const QStringList files = QDir(output.path()).entryList(
+        {QStringLiteral("PDM_*.xlsx"), QStringLiteral("TC_*.xlsx"),
+         QStringLiteral("XML_*.xml")},
+        QDir::Files);
+    QCOMPARE(files.size(), 1);
+    QVERIFY(files.first().startsWith(QStringLiteral("PDM_")));
     window.close();
 }
 

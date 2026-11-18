@@ -114,6 +114,7 @@ class JobOptions:
     output_dir: str
     export_tc: bool = True
     export_xml: bool = False
+    export_pdm: bool = False
     on_invalid: str = "abort"  # abort / skip
     engine: str = "auto"  # auto / openpyxl / excel
     sheet_name: str | None = None
