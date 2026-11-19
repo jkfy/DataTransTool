@@ -42,7 +42,7 @@ def map_xml(record: MaterialRecord) -> dict[str, str]:
     """按 output_Eplan.xml 的 EPLAN 部件属性生成一行。"""
     width = record.width if record.width is not None else 0.0
     height = record.height if record.height is not None else 0.0
-    unit = record.quantity_unit or config.DEFAULT_UNIT
+    unit = record.quantity_unit
     return {
         "P_ARTICLE_PARTTYPE": "1",
         "P_ARTICLE_PARTNR": record.part_no,
