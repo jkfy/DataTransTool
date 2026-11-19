@@ -17,7 +17,7 @@
 - 必填校验：部件编号、类型编号、名称1、制造商、供应商；
 - 重量/宽度/高度/深度：空按 0，负数和非数字报错；
 - 是否导出 **只看界面勾选**：`生成 TC 表`、`生成 XML 表`、`生成 PDM 表`，不再读取输入表的 `EPLAN` / `新TC` 列；
-- PDM 表导出：输入表 B:N 列复制到 `output_pdm.xlsx` 的 A:M，N 列到末尾按模板填写；PDM 与 TC/XML 互斥；
+- PDM 表导出：输入 B→A、C→B/C（C 同时写入主数据编码和零件组ID）、D 丢弃、E:N→D:M；输出 N 列到末尾按模板填写；PDM 与 TC/XML 互斥；
 - TC 固定模板输出；EPLAN XML 固定模板输出；
 - 不再生成 Eplan Excel 表；
 - 文本日志 + `result.json` + 界面进度/错误提示；
@@ -345,7 +345,7 @@ $env:DATATRANS_NO_DIALOGS = "1"
 - TC 的 `是否合法`、`材料`、`采购类型` 留空。
 - XML 的 `P_ARTICLE_ERPNR` 来自 ERP编码、`P_ARTICLE_NOTE` 来自描述；`P_ARTICLE_QUANTITYUNIT` 来自数量单位（空按“件”）。
 - XML 包含所有合法数据行；根节点只更新 `count`，其余属性沿用 `output_Eplan.xml`。
-- PDM 输入模板与 TC/XML 不同，界面上 PDM 与 TC/XML 互斥；PDM 任务只做 B:N → A:M 复制和模板 N 列填充。
+- PDM 输入模板与 TC/XML 不同，界面上 PDM 与 TC/XML 互斥；输入 C 列写入输出 B/C，输入 D 列丢弃，输入 E:N 左移到输出 D:M，N 列到末尾按模板填充。
 - 多文件按列表顺序合并；重复的“类型编号 + 部件编号”只写警告，不自动去重。
 - 默认“有错误整批不导出”；需要部分导出时勾选“跳过错误行继续导出”。
 - 不做界面内预览/编辑；输出后可在 Excel 中检查。

@@ -326,7 +326,11 @@ _PDM_HEADER_LABELS = {
 
 
 def pdm_rows_from_matrix(matrix: list[list[Any]]) -> list[list[Any]]:
-    """从二维矩阵取 B:N（第 2~14 列），第一行若像 PDM 表头则跳过。"""
+    """取 B:N，按 PDM 输出规则重排为 A:M。
+
+    输入 C 列同时写入输出的 B（主数据编码）和 C（零件组ID）；
+    输入 D 列（旧零件组ID）丢弃；输入 E:N 依次左移到输出 D:M。
+    """
     rows: list[list[Any]] = []
     header_checked = False
     for raw in matrix:
@@ -342,7 +346,24 @@ def pdm_rows_from_matrix(matrix: list[list[Any]]) -> list[list[Any]]:
             )
             if matches >= 2:
                 continue
-        rows.append(payload)
+        # B, C, C, E, F, G, H, I, J, K, L, M, N
+        rows.append(
+            [
+                payload[0],
+                payload[1],
+                payload[1],
+                payload[3],
+                payload[4],
+                payload[5],
+                payload[6],
+                payload[7],
+                payload[8],
+                payload[9],
+                payload[10],
+                payload[11],
+                payload[12],
+            ]
+        )
     return rows
 
 

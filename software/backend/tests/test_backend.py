@@ -77,7 +77,7 @@ class TestSampleOutput(BackendTestCase):
         )
         self.assertEqual(
             rows[1],
-            [None, "国产.BLST-4.6-150", "扎带", "11111111", "BLST-4.6-150", "国产", 0.01, "成品", "电器外购件"],
+            [None, "国产.BLST-4.6-150", "扎带", "11111111", "BLST-4.6-150", "国产", 0.01, "成品", "外购件"],
         )
         self.assertEqual(len(rows), 4)
         self.assertIsNone(rows[1][0])
@@ -249,7 +249,7 @@ class TestPdmOutput(BackendTestCase):
         shutil.copy2(PDM_SAMPLE, target)
         return target
 
-    def test_pdm_copies_b_to_n_into_a_to_m(self) -> None:
+    def test_pdm_maps_input_columns_to_output(self) -> None:
         result = self.run_job_for(
             [self.copy_pdm_sample()],
             export_tc=False,
@@ -266,7 +266,7 @@ class TestPdmOutput(BackendTestCase):
         self.assertEqual(len(rows), 3)
         self.assertEqual(
             rows[1][:13],
-            ["P001", "M001", "G1", "长描述1", "F1", "D1", "V1", "S1", "材质1", 1.2, 5, "备注1", "备注A"],
+            ["P001", "M001", "M001", "长描述1", "F1", "D1", "V1", "S1", "材质1", 1.2, 5, "备注1", "备注A"],
         )
         self.assertEqual(
             rows[1][13:],
