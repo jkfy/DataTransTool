@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 {
     QApplication application(argc, argv);
     application.setApplicationName(QStringLiteral("DataTransTool"));
-    application.setApplicationVersion(QStringLiteral("0.1.0"));
+    application.setApplicationVersion(QStringLiteral("1.0.0"));
     application.setOrganizationName(QStringLiteral("DataTransTool"));
 
     QFont font(QStringLiteral("Microsoft YaHei UI"));

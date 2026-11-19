@@ -9,8 +9,8 @@
 
 | 路径 | 说明 |
 |---|---|
-| `DataTransTool-0.1.0-win64.zip` | **离线运行包**。解压后双击 `DataTransTool.exe`，目标机无需 Python/Qt/联网 |
-| `DataTransTool-0.1.0-source.zip` | 源码压缩包，便于归档 |
+| `DataTransTool-1.0.0-win64.zip` | **离线运行包**。解压后双击 `DataTransTool.exe`，目标机无需 Python/Qt/联网 |
+| `DataTransTool-1.0.0-source.zip` | 源码压缩包，便于归档 |
 | `backend/` | Python 后端（openpyxl + 可选 Excel COM、校验、映射、CLI 协议） |
 | `ui/` | Qt/C++ 前端；`MainWindow.ui` 是可视化界面文件，`MainWindow.cpp` 是逻辑 |
 | `icons/` | 应用图标 `transIcon.png`，通过 `ui/app.qrc` 编进 exe |
@@ -23,7 +23,7 @@
 ## 快速运行
 
 ```text
-解压 DataTransTool-0.1.0-win64.zip
+解压 DataTransTool-1.0.0-win64.zip
 双击 DataTransTool.exe
 添加 .xlsx / .xlsm 物料总表
 选择输出目录
@@ -50,9 +50,9 @@ powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 产物会写到：
 
 - `software\dist\DataTransTool\`
-- `software\dist\DataTransTool-0.1.0-win64.zip`
+- `software\dist\DataTransTool-1.0.0-win64.zip`
 
-不会覆盖本目录已有的离线包；确认新包没问题后，再手动替换 `DataTransTool-0.1.0-win64.zip`。
+不会覆盖本目录已有的离线包；确认新包没问题后，再手动替换 `DataTransTool-1.0.0-win64.zip`。
 
 ## 系统要求
 

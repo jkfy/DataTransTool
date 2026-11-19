@@ -29,7 +29,7 @@ $venvDir = Join-Path $buildDir "venv"
 $backendDist = Join-Path $distDir "pyinstaller"
 $appDir = Join-Path $distDir "DataTransTool"
 $cleanTemplatesDir = Join-Path $buildDir "templates-clean"
-$version = "0.1.0"
+$version = "1.0.0"
 
 function Write-Step([string]$Message) {
     Write-Host ""

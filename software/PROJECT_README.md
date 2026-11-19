@@ -68,7 +68,7 @@ DataTransTool/
     README_offline.txt     # 随包说明
   dist/                    # 构建产物（gitignore）
     DataTransTool/
-    DataTransTool-0.1.0-win64.zip
+    DataTransTool-1.0.0-win64.zip
 ```
 
 > 界面控件和布局都在 `ui/MainWindow.ui`，可直接用 Qt Designer 或 Qt Creator 打开修改；
@@ -189,7 +189,7 @@ datatrans-core.exe --engine excel ...
 
 ### 方式一：直接运行离线包
 
-1. 解压 `dist/DataTransTool-0.1.0-win64.zip`。
+1. 解压 `dist/DataTransTool-1.0.0-win64.zip`。
 2. 双击 `DataTransTool.exe`。
 3. 添加 `.xlsx` / `.xlsm` 文件、选择输出目录、点击“开始处理”。
 
@@ -274,7 +274,7 @@ powershell -ExecutionPolicy Bypass -File packaging\build.ps1 `
 产物：
 
 - 目录：`dist\DataTransTool\`
-- 压缩包：`dist\DataTransTool-0.1.0-win64.zip`（约 33 MB）
+- 压缩包：`dist\DataTransTool-1.0.0-win64.zip`（约 33 MB）
 
 ## 测试
 
